@@ -1,0 +1,399 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { uploadImages } from "@/lib/upload";
+import { ProtectedRoute } from "@/components/protected-route";
+import { Loader2, Package, ArrowLeft, Upload, CheckCircle, AlertCircle, DollarSign, ImagePlus, X } from "lucide-react";
+
+interface ProductFormData {
+  name: string;
+  name_mm: string;
+  description: string;
+  price: number;
+  booking_fee: number;
+  images: File[];
+}
+
+const CATEGORIES = [
+  { value: "clothes", label: "👕 Clothes", label_mm: "👕 အဝတ်အစား" },
+  { value: "electronics", label: "📱 Electronics", label_mm: "📱 အီလက်ထရွန်နစ်" },
+  { value: "food", label: "🍜 Food", label_mm: "🍜 အစားအသောက်" },
+  { value: "cosmetics", label: "💄 Cosmetics", label_mm: "💄 အလှကုန်" },
+  { value: "second_hand", label: "♻️ Second-hand", label_mm: "♻️ ရောင်းချမှု" },
+  { value: "other", label: "🏪 Other", label_mm: "🏪 အခြား" },
+];
+
+export default function AddProductPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [shopId, setShopId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  
+  const [formData, setFormData] = useState<ProductFormData>({
+    name: "",
+    name_mm: "",
+    description: "",
+    price: 0,
+    booking_fee: 500,
+    images: [],
+  });
+
+  // Fetch user's shop
+  useEffect(() => {
+    const fetchShop = async () => {
+      if (!user?.uid) return;
+      try {
+        const response = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
+        if (response.ok) {
+          const data = await response.json();
+          setShopId(data.data.shop_id);
+        } else {
+          router.push("/onboarding/shop-registration");
+        }
+      } catch {
+        router.push("/onboarding/shop-registration");
+      }
+    };
+    fetchShop();
+  }, [user?.uid, router]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length + formData.images.length > 1) {
+      setError("Maximum 1 image allowed");
+      e.target.value = ""; // Reset input
+      return;
+    }
+
+    // Validate file size and type
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Image size must be less than 5MB");
+        e.target.value = ""; // Reset input
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        setError("Only image files allowed");
+        e.target.value = ""; // Reset input
+        return;
+      }
+    }
+
+    setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
+    
+    // Create previews
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+    setError(null);
+    e.target.value = ""; // Reset input to allow selecting more images
+  };
+
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shopId) {
+      setError("Shop not found");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      let imageUrls: string[] = [];
+
+      // Upload images if any
+      if (formData.images.length > 0) {
+        setUploadLoading(true);
+        const uploadResult = await uploadImages(formData.images, "products");
+        setUploadLoading(false);
+        if (uploadResult.error) {
+          throw new Error(uploadResult.error);
+        }
+        imageUrls = uploadResult.urls;
+      }
+
+      // Create product with uploaded image URLs
+      const response = await fetch("/api/products/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shop_id: shopId,
+          product_name: formData.name,
+          product_name_mm: formData.name_mm,
+          description: formData.description,
+          price: formData.price,
+          booking_fee: formData.booking_fee,
+          image_urls: imageUrls,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create product");
+      }
+
+      setSuccess(true);
+    } catch (err) {
+      setUploadLoading(false);
+      setError(err instanceof Error ? err.message : "Failed to create product");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Product Added!</h1>
+          <p className="text-gray-600 mb-8">Your product is now visible on the map.</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => router.push("/shop/dashboard")}
+              className="px-8 py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              Back to Dashboard
+            </button>
+            <button
+              onClick={() => {
+                setSuccess(false);
+                setFormData({
+                  name: "",
+                  name_mm: "",
+                  description: "",
+                  price: 0,
+                  booking_fee: 500,
+                  images: [],
+                });
+                setImagePreviews([]);
+              }}
+              className="px-8 py-4 border-2 border-[#667eea] text-[#667eea] rounded-xl font-semibold hover:bg-[#667eea] hover:text-white transition-all"
+            >
+              Add Another
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => router.push("/shop/dashboard")}
+                  className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <h1 className="text-xl font-semibold text-gray-900">Add New Product</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-4xl mx-auto px-4 py-6">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            {/* Product Name */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter product name"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                required
+              />
+            </div>
+
+            {/* Product Name (Myanmar) */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Name (Myanmar) <span className="text-gray-400">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name_mm}
+                onChange={(e) => setFormData(prev => ({ ...prev, name_mm: e.target.value }))}
+                placeholder="မြန်မာဘာသာဖြင့် ထည့်ပါ"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe your product..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900 resize-none"
+              />
+            </div>
+
+            {/* Price */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Price (MMK) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="number"
+                  value={formData.price || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value === "" ? 0 : parseInt(value.replace(/^0+/, ""), 10) || 0;
+                    setFormData(prev => ({ ...prev, price: numValue }));
+                  }}
+                  min={1}
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                  required
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Actual price of the product.
+              </p>
+            </div>
+
+            {/* Booking Fee */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Booking Fee (MMK) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="number"
+                  value={formData.booking_fee || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value === "" ? 0 : parseInt(value.replace(/^0+/, ""), 10) || 0;
+                    setFormData(prev => ({ ...prev, booking_fee: numValue }));
+                  }}
+                  min={500}
+                  step={100}
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                  required
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Minimum 500 MMK. Customer pays this to book the product.
+              </p>
+            </div>
+
+            {/* Images */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Image <span className="text-red-500">*</span>
+              </label>
+              
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-24 h-24 object-cover rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Button */}
+              {imagePreviews.length < 1 && (
+                <label className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#667eea] hover:bg-gray-50 transition-colors">
+                  <div className="text-center">
+                    <ImagePlus className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <span className="text-sm text-gray-500">Add Photo</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    required={imagePreviews.length === 0}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading || uploadLoading || !shopId}
+              className="w-full py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {uploadLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Uploading images...</span>
+                </>
+              ) : loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Package className="h-5 w-5" />
+                  <span>Add Product</span>
+                </>
+              )}
+            </button>
+          </form>
+        </main>
+      </div>
+    </ProtectedRoute>
+  );
+}
