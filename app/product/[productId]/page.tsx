@@ -133,7 +133,30 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
 
+  // Saved state
+  const [isSaved, setIsSaved] = useState(false);
+
   const t = TRANSLATIONS[language];
+
+  // Check if product is saved
+  useEffect(() => {
+    const savedProducts = JSON.parse(localStorage.getItem("savedProducts") || "[]");
+    setIsSaved(savedProducts.includes(productId));
+  }, [productId]);
+
+  // Toggle save product
+  const toggleSave = () => {
+    const savedProducts = JSON.parse(localStorage.getItem("savedProducts") || "[]");
+    if (isSaved) {
+      const updated = savedProducts.filter((id: string) => id !== productId);
+      localStorage.setItem("savedProducts", JSON.stringify(updated));
+      setIsSaved(false);
+    } else {
+      savedProducts.push(productId);
+      localStorage.setItem("savedProducts", JSON.stringify(savedProducts));
+      setIsSaved(true);
+    }
+  };
 
   // Helper function to get relative time (e.g., "5 days ago")
   const getRelativeTime = (dateString: string, lang: Language): string => {
@@ -484,9 +507,16 @@ export default function ProductDetailPage() {
               </Link>
               
               <div className="grid grid-cols-2 gap-3">
-                <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl text-black hover:bg-gray-50 transition-colors">
-                  <Heart className="h-5 w-5" />
-                  Save
+                <button 
+                  onClick={toggleSave}
+                  className={`flex items-center justify-center gap-2 py-3 border rounded-xl transition-colors ${
+                    isSaved 
+                      ? "border-[#667eea] bg-[#667eea]/10 text-[#667eea]" 
+                      : "border-gray-200 text-black hover:bg-gray-50"
+                  }`}
+                >
+                  <Heart className={`h-5 w-5 ${isSaved ? "fill-[#667eea]" : ""}`} />
+                  {isSaved ? "Saved" : "Save"}
                 </button>
                 <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl text-black hover:bg-gray-50 transition-colors">
                   <Phone className="h-5 w-5" />
@@ -506,7 +536,7 @@ export default function ProductDetailPage() {
                   />
                 ) : (
                   <div className="w-12 h-12 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xl font-bold">{shopName.charAt(0).toUpperCase()}</span>
+                    <Star className="h-6 w-6 text-white fill-white" />
                   </div>
                 )}
                 <div className="flex-1">

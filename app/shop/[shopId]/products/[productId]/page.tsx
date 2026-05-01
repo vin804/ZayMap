@@ -97,6 +97,29 @@ export default function ProductDetailPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
+  // Saved state
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Load language preference
+  useEffect(() => {
+    const savedProducts = JSON.parse(localStorage.getItem("savedProducts") || "[]");
+    setIsSaved(savedProducts.includes(productId));
+  }, [productId]);
+
+  // Toggle save product
+  const toggleSave = () => {
+    const savedProducts = JSON.parse(localStorage.getItem("savedProducts") || "[]");
+    if (isSaved) {
+      const updated = savedProducts.filter((id: string) => id !== productId);
+      localStorage.setItem("savedProducts", JSON.stringify(updated));
+      setIsSaved(false);
+    } else {
+      savedProducts.push(productId);
+      localStorage.setItem("savedProducts", JSON.stringify(savedProducts));
+      setIsSaved(true);
+    }
+  };
+
   // Load language preference
   useEffect(() => {
     const savedLang = localStorage.getItem("preferred_language") as "en" | "my";
@@ -436,9 +459,16 @@ export default function ProductDetailPage() {
                 </Link>
                 
                 <div className="grid grid-cols-2 gap-3">
-                  <button className="py-3 border-2 border-gray-300 rounded-xl font-medium text-black hover:border-gray-400 transition-colors flex items-center justify-center gap-2">
-                    <Heart className="h-5 w-5" />
-                    {language === "en" ? "Save" : "သိမ်းဆည်းရန်"}
+                  <button 
+                    onClick={toggleSave}
+                    className={`py-3 border-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+                      isSaved 
+                        ? "border-[#667eea] bg-[#667eea]/10 text-[#667eea]" 
+                        : "border-gray-300 text-black hover:border-gray-400"
+                    }`}
+                  >
+                    <Heart className={`h-5 w-5 ${isSaved ? "fill-[#667eea]" : ""}`} />
+                    {language === "en" ? (isSaved ? "Saved" : "Save") : (isSaved ? "သိမ်းပြီးပါပြီ" : "သိမ်းဆည်းရန်")}
                   </button>
                   <Link
                     href={`tel:${shop.phone}`}
@@ -457,7 +487,7 @@ export default function ProductDetailPage() {
                     {shop.logo_url ? (
                       <img src={shop.logo_url} alt={shopName} className="w-full h-full object-cover rounded-lg" />
                     ) : (
-                      <Store className="h-6 w-6 text-white" />
+                      <Star className="h-6 w-6 text-white fill-white" />
                     )}
                   </div>
                   <div className="flex-1">
