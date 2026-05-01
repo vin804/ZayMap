@@ -16,11 +16,8 @@ import {
   RefreshCw,
   Globe,
   Clock,
-  ShoppingBag,
+  Heart,
   X,
-  Calendar,
-  CreditCard,
-  PlayCircle,
   CheckCircle,
   MapPin as MapPinIcon,
   ArrowRight,
@@ -34,10 +31,8 @@ interface Product {
   name_mm?: string;
   image_urls: string[];
   price: number;
-  booking_fee: number;
   currency: string;
   delivery_available: boolean;
-  freshness_status: "green" | "orange" | "red";
   created_at: string;
   shop: {
     id: string;
@@ -47,6 +42,7 @@ interface Product {
     phone?: string;
     address?: string;
     delivery_available: boolean;
+    logo_url?: string;
   };
   reviews: Review[];
   reviews_count: number;
@@ -62,7 +58,6 @@ interface Review {
 }
 
 type Language = "en" | "my";
-type PaymentMethod = "pay" | "watch_ad";
 
 // Translations
 const TRANSLATIONS = {
@@ -71,33 +66,14 @@ const TRANSLATIONS = {
     productNotFound: "Product not found",
     loading: "Loading product details...",
     tryAgain: "Try Again",
-    bookingFee: "Booking Fee",
-    deliveryAvailable: "Delivery Available",
-    deliveryNotAvailable: "Delivery Not Available",
-    freshnessGreen: "Listed less than 24 hours ago",
-    freshnessOrange: "Listed 1-3 days ago",
-    freshnessRed: "Listed more than 3 days ago",
     reviews: "Reviews",
     noReviews: "No reviews yet. Be the first to review!",
     writeReview: "Write a Review",
-    bookNow: "Book Now",
     viewShop: "View Shop",
     rating: "Rating",
-    book: "Book",
-    // Booking Modal
-    confirmBooking: "Confirm Booking",
-    pickupTime: "When do you want to pick up?",
-    selectPickupTime: "Select pickup time",
-    paymentMethod: "Payment Method",
-    payNow: "Pay",
-    watchAd: "Watch ad instead",
-    watchAdDescription: "Watch a short ad and book for free",
-    cancel: "Cancel",
-    confirm: "Confirm Booking",
-    bookingFeeLabel: "Booking fee",
     // Review Modal
     writeAReview: "Write a Review",
-    yourName: "Your Name",
+    yourName: "Your name",
     ratingLabel: "Rating",
     reviewOptional: "Review (optional)",
     submitReview: "Submit Review",
@@ -105,10 +81,6 @@ const TRANSLATIONS = {
     // Errors
     enterName: "Please enter your name",
     selectRating: "Please select a rating",
-    selectPickup: "Please select a pickup time",
-    selectPayment: "Please select a payment method",
-    futureTime: "Pickup time must be in the future",
-    bookingError: "Failed to create booking. Please try again.",
     reviewError: "Failed to submit review. Please try again.",
   },
   my: {
@@ -116,30 +88,11 @@ const TRANSLATIONS = {
     productNotFound: "ပစ္စည်းမတွေ့ပါ",
     loading: "ပစ္စည်းအချက်အလက်များ ရယူနေသည်...",
     tryAgain: "ထပ်စမ်းကြည့်မယ်",
-    bookingFee: "ဘွတ်ကောင့်နှုန်း",
-    deliveryAvailable: "ပို့ဆောင်ရေး ရရှိသည်",
-    deliveryNotAvailable: "ပို့ဆောင်ရေး မရရှိပါ",
-    freshnessGreen: "၂၄ နာရီအတွင်း တင်ထားသည်",
-    freshnessOrange: "၁-၃ ရက်အတွင်း တင်ထားသည်",
-    freshnessRed: "၃ ရက်အထက် တင်ထားသည်",
     reviews: "သုံးသပ်ချက်များ",
     noReviews: "သုံးသပ်ချက်များ မရှိသေးပါ။ ပထမဆုံးသုံးသပ်ရေးသားပါ!",
     writeReview: "သုံးသပ်ရေးသားမယ်",
-    bookNow: "ဘွတ်ကောင့်မယ်",
     viewShop: "ဆိုင်ကြည့်မယ်",
     rating: "အဆင့်",
-    book: "ဘွတ်ကောင့်",
-    // Booking Modal
-    confirmBooking: "ဘွတ်ကောင့်အတည်ပြု",
-    pickupTime: "ဘယ်အချိန်မှာ လာယူမလဲ?",
-    selectPickupTime: "လာယူရမည့်အချိန်ရွေးပါ",
-    paymentMethod: "ငွေပေးချေမှု",
-    payNow: "ဆောင်မယ်",
-    watchAd: "ကြော်ငြာကြည့်ပါ",
-    watchAdDescription: "ကြော်ငြာတိုတိုကြည့်ပြီး အခမဲ့ဘွတ်ကောင့်",
-    cancel: "ပယ်ဖျက်မယ်",
-    confirm: "ဘွတ်ကောင့်အတည်ပြု",
-    bookingFeeLabel: "ဘွတ်ကောင့်နှုန်း",
     // Review Modal
     writeAReview: "သုံးသပ်ရေးသားမယ်",
     yourName: "သင့်နာမည်",
@@ -150,30 +103,7 @@ const TRANSLATIONS = {
     // Errors
     enterName: "သင့်နာမည်ထည့်ပါ",
     selectRating: "အဆင့်ရွေးပါ",
-    selectPickup: "လာယူရမည့်အချိန်ရွေးပါ",
-    selectPayment: "ငွေပေးချေမှုရွေးပါ",
-    futureTime: "အနာဂတ်အချိန်ရွေးပါ",
-    bookingError: "ဘွတ်ကောင့်မရပါ။ ထပ်စမ်းကြည့်ပါ။",
     reviewError: "သုံးသပ်ချက်မတင်နိုင်ပါ။ ထပ်စမ်းကြည့်ပါ။",
-  },
-};
-
-// Freshness configuration
-const FRESHNESS_CONFIG = {
-  green: {
-    bg: "bg-green-500",
-    text: "text-green-700",
-    label: { en: "Fresh", my: "သစ်သစ်လှလှ" },
-  },
-  orange: {
-    bg: "bg-orange-500",
-    text: "text-orange-700",
-    label: { en: "Recent", my: "မကြာသေးခင်" },
-  },
-  red: {
-    bg: "bg-red-500",
-    text: "text-red-700",
-    label: { en: "Old", my: "အဟောင်း" },
   },
 };
 
@@ -189,24 +119,53 @@ export default function ProductDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
-  // Modal states
-  const [showBookingModal, setShowBookingModal] = useState(false);
+  // Modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
-  
-  // Booking form state
-  const [pickupTime, setPickupTime] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pay");
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
   
   // Review form state
   const [reviewerName, setReviewerName] = useState("");
-  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
+  // Related products from same shop
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
+
   const t = TRANSLATIONS[language];
+
+  // Helper function to get relative time (e.g., "5 days ago")
+  const getRelativeTime = (dateString: string, lang: Language): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (lang === "my") {
+      if (diffSecs < 60) return "လွန်ခဲ့သော စက္ကန့်အနည်းငယ်";
+      if (diffMins < 60) return `လွန်ခဲ့သော ${diffMins} မိနစ်`;
+      if (diffHours < 24) return `လွန်ခဲ့သော ${diffHours} နာရီ`;
+      if (diffDays < 7) return `လွန်ခဲ့သော ${diffDays} ရက်`;
+      if (diffWeeks < 4) return `လွန်ခဲ့သော ${diffWeeks} ပတ်`;
+      if (diffMonths < 12) return `လွန်ခဲ့သော ${diffMonths} လ`;
+      return `လွန်ခဲ့သော ${diffYears} နှစ်`;
+    } else {
+      if (diffSecs < 60) return "Just now";
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+      if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? "s" : ""} ago`;
+      if (diffMonths < 12) return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+      return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
+    }
+  };
 
   // Load language preference
   useEffect(() => {
@@ -239,6 +198,11 @@ export default function ProductDetailPage() {
       }
       const data = await res.json();
       setProduct(data.data);
+      
+      // Fetch related products from same shop
+      if (data.data?.shop?.id) {
+        fetchRelatedProducts(data.data.shop.id, productId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -250,57 +214,26 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [fetchProduct]);
 
-  // Handle booking submission
-  const handleBooking = async () => {
-    setBookingError(null);
-    
-    if (!pickupTime) {
-      setBookingError(t.selectPickup);
-      return;
-    }
-
-    const pickupDate = new Date(pickupTime);
-    const now = new Date();
-    if (pickupDate <= now) {
-      setBookingError(t.futureTime);
-      return;
-    }
-
-    setBookingLoading(true);
-
-    if (!user?.uid) {
-      setBookingError("Please log in to book");
-      setBookingLoading(false);
-      return;
-    }
-
+  // Fetch related products from same shop
+  const fetchRelatedProducts = async (shopId: string, currentProductId: string) => {
+    setLoadingRelated(true);
     try {
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-user-id": user.uid,
-        },
-        body: JSON.stringify({
-          product_id: productId,
-          pickup_time: pickupTime,
-          payment_method: paymentMethod,
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || t.bookingError);
+      const res = await fetch(`/api/shops/${shopId}/products`);
+      if (res.ok) {
+        const data = await res.json();
+        // Filter out current product and limit to 10
+        const filtered = (data.data?.products || [])
+          .filter((p: Product) => {
+            const pId = p.id || (p as any).product_id;
+            return String(pId) !== String(currentProductId);
+          })
+          .slice(0, 10);
+        setRelatedProducts(filtered);
       }
-
-      const data = await res.json();
-      
-      // Redirect to booking status page
-      router.push(`/booking/${data.data.id}`);
-    } catch (err) {
-      setBookingError(err instanceof Error ? err.message : t.bookingError);
+    } catch {
+      // Silent fail
     } finally {
-      setBookingLoading(false);
+      setLoadingRelated(false);
     }
   };
 
@@ -403,8 +336,6 @@ export default function ProductDetailPage() {
 
   const displayName = language === "my" && product.name_mm ? product.name_mm : product.name;
   const shopName = language === "my" && product.shop.name_mm ? product.shop.name_mm : product.shop.name;
-  const freshness = FRESHNESS_CONFIG[product.freshness_status];
-  const isEligibleForAd = product.booking_fee === 500;
 
   return (
     <div className="min-h-screen bg-white">
@@ -438,33 +369,54 @@ export default function ProductDetailPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Product Image Carousel */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="relative aspect-video bg-gray-100">
-            {product.image_urls && product.image_urls.length > 0 ? (
-              <>
-                <img
-                  src={product.image_urls[currentImageIndex]}
-                  alt={displayName}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Ctext x='50' y='50' font-size='14' fill='%239ca3af' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E";
-                  }}
-                />
-                {product.image_urls.length > 1 && (
-                  <>
-                    <button
-                      onClick={prevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 rounded-full shadow-lg hover:bg-white transition-colors"
-                    >
-                      <ChevronLeft className="h-5 w-5 text-black" />
-                    </button>
-                    <button
-                      onClick={nextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 rounded-full shadow-lg hover:bg-white transition-colors"
-                    >
-                      <ChevronRight className="h-5 w-5 text-black" />
-                    </button>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Left Column - Images with Mini Thumbnails */}
+          <div className="flex gap-4">
+            {/* Mini Thumbnail Gallery - Always show if images exist */}
+            {product.image_urls && product.image_urls.length > 0 && (
+              <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto">
+                {product.image_urls.map((url, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                      idx === currentImageIndex ? "border-[#667eea]" : "border-gray-200"
+                    }`}
+                  >
+                    <img
+                      src={url}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* Main Image */}
+            <div className="flex-1 relative aspect-square bg-gray-100 rounded-2xl overflow-hidden">
+              {product.image_urls && product.image_urls.length > 0 ? (
+                <>
+                  <img
+                    src={product.image_urls[currentImageIndex]}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Ctext x='50' y='50' font-size='14' fill='%239ca3af' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E";
+                    }}
+                  />
+                  
+                  {/* Time Ago Badge */}
+                  <div className="absolute top-4 right-4">
+                    <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-white/90 text-gray-700 flex items-center gap-1.5 shadow-sm">
+                      <Clock className="h-3.5 w-3.5" />
+                      {getRelativeTime(product.created_at, language)}
+                    </span>
+                  </div>
+
+                  {/* Image indicators */}
+                  {product.image_urls.length > 1 && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                       {product.image_urls.map((_, idx) => (
                         <button
@@ -476,97 +428,115 @@ export default function ProductDetailPage() {
                         />
                       ))}
                     </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-black">
-                <span className="text-6xl">📦</span>
-              </div>
-            )}
-            
-            {/* Freshness Badge */}
-            <div className="absolute top-4 left-4">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-sm font-semibold ${freshness.bg} shadow-lg`}>
-                <span className="w-2 h-2 rounded-full bg-white" />
-                {freshness.label[language]}
-              </span>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-black">
+                  <span className="text-6xl">📦</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Product Info */}
-          <div className="p-6">
-            <h2 className="text-xl font-bold text-black mb-2">{displayName}</h2>
-            
-            {/* Price & Delivery */}
-            <div className="flex items-center justify-between mb-4">
+          {/* Right Column - Product Info */}
+          <div className="space-y-4">
+            {/* Title Row with Actions */}
+            <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex flex-col">
-                  <span className="text-sm text-black">{product.currency}</span>
-                  <span className="text-4xl font-bold text-black">
-                    {product.price.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-black">
-                <Truck className="h-4 w-4" />
-                {product.delivery_available ? t.deliveryAvailable : t.deliveryNotAvailable}
+                <h1 className="text-2xl font-bold text-black">{displayName}</h1>
+                <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                  <Share2 className="h-5 w-5 text-black" />
+                </button>
               </div>
             </div>
 
-            <div className="text-sm text-black mb-4">
-              + {product.booking_fee.toLocaleString()} {product.currency} {t.bookingFee}
+            {/* Rating */}
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <span className="text-black font-medium">{product.shop.rating.toFixed(1)}</span>
+              <span className="text-gray-500">({product.reviews_count} {t.rating})</span>
             </div>
 
-            {/* Freshness Explanation */}
-            <p className="text-sm text-black mb-4">
-              {language === "en" 
-                ? (product.freshness_status === "green" ? t.freshnessGreen 
-                    : product.freshness_status === "orange" ? t.freshnessOrange 
-                    : t.freshnessRed)
-                : (product.freshness_status === "green" ? t.freshnessGreen
-                    : product.freshness_status === "orange" ? t.freshnessOrange
-                    : t.freshnessRed)
-              }
-            </p>
+            {/* Price Section */}
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm text-gray-500">{product.currency}</span>
+                <span className="text-3xl font-bold text-black">{product.price.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                <span>In-store pickup</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                <span>Available now</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Link
+                href={`/shop/${product.shop.id}`}
+                className="w-full bg-[#667eea] text-white py-3 rounded-xl font-semibold hover:bg-[#5a67d8] transition-colors flex items-center justify-center gap-2"
+              >
+                <MapPin className="h-5 w-5" />
+                Get Directions
+              </Link>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl text-black hover:bg-gray-50 transition-colors">
+                  <Heart className="h-5 w-5" />
+                  Save
+                </button>
+                <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl text-black hover:bg-gray-50 transition-colors">
+                  <Phone className="h-5 w-5" />
+                  Call Shop
+                </button>
+              </div>
+            </div>
 
             {/* Shop Info Card */}
             <div className="border border-gray-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xl font-bold">{shopName.charAt(0).toUpperCase()}</span>
-                </div>
+                {product.shop.logo_url ? (
+                  <img 
+                    src={product.shop.logo_url} 
+                    alt={shopName}
+                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xl font-bold">{shopName.charAt(0).toUpperCase()}</span>
+                  </div>
+                )}
                 <div className="flex-1">
-                  <p className="font-medium text-black">{shopName}</p>
-                  <div className="flex items-center gap-1 mt-1 text-sm text-black">
+                  <p className="font-semibold text-black">{shopName}</p>
+                  <p className="text-sm text-gray-500">{product.shop.address || "Kpa Front"}</p>
+                  <div className="flex items-center gap-1 mt-1 text-sm">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span>{product.shop.rating.toFixed(1)}</span>
-                    <span className="text-[#667eea] hover:underline cursor-pointer">
-                      ({t.rating})
-                    </span>
+                    <span className="text-black">{product.shop.rating.toFixed(1)}</span>
+                    <span className="text-gray-500">({t.rating})</span>
                   </div>
-                  <div className="flex items-center gap-1 mt-1 text-sm text-black">
+                  <Link href={`/shop/${product.shop.id}`} className="text-[#667eea] text-sm hover:underline flex items-center gap-1 mt-1">
                     <MapPin className="h-3.5 w-3.5" />
-                    <Link href={`/shop/${product.shop.id}`} className="text-[#667eea] hover:underline">
-                      Get directions
-                    </Link>
-                  </div>
+                    Get directions
+                  </Link>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Book Now Button */}
-        <button
-          onClick={() => setShowBookingModal(true)}
-          className="w-full bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all mb-6"
-        >
-          {t.bookNow}
-        </button>
+        {/* About this Item */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-black mb-3">About this Item</h3>
+          <p className="text-gray-600">
+            {language === "en" ? "Posted " : "တင်ထားသည်မှာ "}{getRelativeTime(product.created_at, language)}
+          </p>
+        </div>
 
         {/* Reviews Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-black">
               {t.reviews} ({product.reviews_count})
@@ -580,13 +550,13 @@ export default function ProductDetailPage() {
           </div>
 
           {product.reviews.length === 0 ? (
-            <div className="text-center py-8 text-black">
-              <p>{t.noReviews}</p>
+            <div className="text-center py-8 bg-gray-50 rounded-xl">
+              <p className="text-gray-500">{t.noReviews}</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {product.reviews.map((review) => (
-                <div key={review.id} className="border-b border-gray-200 pb-4 last:border-0">
+                <div key={review.id} className="bg-gray-50 rounded-xl p-4">
                   <div className="flex items-start justify-between mb-2">
                     <p className="font-medium text-black">{review.reviewer_name}</p>
                     <div className="flex items-center gap-1">
@@ -594,8 +564,8 @@ export default function ProductDetailPage() {
                       <span className="font-semibold text-black">{review.rating}</span>
                     </div>
                   </div>
-                  <p className="text-sm text-black">{review.review_text}</p>
-                  <p className="text-xs text-black mt-2">
+                  <p className="text-sm text-gray-600">{review.review_text}</p>
+                  <p className="text-xs text-gray-400 mt-2">
                     {new Date(review.created_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -603,151 +573,63 @@ export default function ProductDetailPage() {
             </div>
           )}
         </div>
-      </main>
 
-      {/* Booking Modal */}
-      {showBookingModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-black">{t.confirmBooking}</h3>
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="p-2 -mr-2 rounded-full hover:bg-gray-100"
-                >
-                  <X className="h-5 w-5 text-black" />
-                </button>
-              </div>
-
-              {/* Product Summary */}
-              <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-xl">
-                <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                  {product.image_urls?.[0] ? (
-                    <img
-                      src={product.image_urls[0]}
-                      alt={displayName}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <span className="text-2xl">📦</span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-black line-clamp-1">{displayName}</p>
-                  <p className="text-[#667eea] font-semibold">
-                    {product.price.toLocaleString()} {product.currency}
-                  </p>
-                  <p className="text-xs text-black">
-                    + {product.booking_fee.toLocaleString()} {product.currency} {t.bookingFee.toLowerCase()}
-                  </p>
-                </div>
-              </div>
-
-              {/* Pickup Time */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-black mb-2">
-                  <span className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {t.pickupTime}
-                  </span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={pickupTime}
-                  onChange={(e) => setPickupTime(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent text-black"
-                  min={new Date().toISOString().slice(0, 16)}
-                />
-              </div>
-
-              {/* Payment Method */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-black mb-3">
-                  {t.paymentMethod}
-                </label>
-                
-                {/* Pay Now Option - Always available */}
-                <label className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors mb-3 ${
-                  paymentMethod === "pay" 
-                    ? "border-[#667eea] bg-[#667eea]/5" 
-                    : "border-gray-200 hover:border-gray-300"
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="pay"
-                    checked={paymentMethod === "pay"}
-                    onChange={() => setPaymentMethod("pay")}
-                    className="sr-only"
-                  />
-                  <CreditCard className="h-5 w-5 text-[#667eea]" />
-                  <div className="flex-1">
-                    <p className="font-medium text-black">{t.payNow}</p>
-                    <p className="text-sm text-black">{product.booking_fee.toLocaleString()} {product.currency} {t.bookingFee.toLowerCase()}</p>
-                  </div>
-                  {paymentMethod === "pay" && <CheckCircle className="h-5 w-5 text-[#667eea]" />}
-                </label>
-
-                {/* Watch Ad Option - Only for 500 MMK */}
-                {isEligibleForAd && (
-                  <label className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
-                    paymentMethod === "watch_ad" 
-                      ? "border-[#667eea] bg-[#667eea]/5" 
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="watch_ad"
-                      checked={paymentMethod === "watch_ad"}
-                      onChange={() => setPaymentMethod("watch_ad")}
-                      className="sr-only"
-                    />
-                    <PlayCircle className="h-5 w-5 text-[#667eea]" />
-                    <div className="flex-1">
-                      <p className="font-medium text-black">{t.watchAd}</p>
-                      <p className="text-sm text-black">{t.watchAdDescription}</p>
-                    </div>
-                    {paymentMethod === "watch_ad" && <CheckCircle className="h-5 w-5 text-[#667eea]" />}
-                  </label>
-                )}
-              </div>
-
-              {/* Error Message */}
-              {bookingError && (
-                <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                  {bookingError}
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  onClick={handleBooking}
-                  disabled={bookingLoading}
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {bookingLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      ...
-                    </span>
-                  ) : (
-                    t.confirm
-                  )}
-                </button>
-              </div>
-            </div>
+        {/* More from this shop */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-black">More from this shop</h3>
+            <Link href={`/shop/${product.shop.id}`} className="text-[#667eea] text-sm hover:underline flex items-center gap-1">
+              See all
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
+          
+          {loadingRelated ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-[#667eea]" />
+            </div>
+          ) : relatedProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {relatedProducts.map((relatedProduct, index) => (
+                <Link 
+                  key={`${relatedProduct.id}-${index}`} 
+                  href={`/product/${relatedProduct.id}`}
+                  className="group bg-gray-50 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                    {relatedProduct.image_urls?.[0] ? (
+                      <img
+                        src={relatedProduct.image_urls[0]}
+                        alt={language === "en" ? relatedProduct.name : (relatedProduct.name_mm || relatedProduct.name)}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-4xl">
+                        📦
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="font-medium text-black text-sm line-clamp-1">
+                      {language === "en" ? relatedProduct.name : (relatedProduct.name_mm || relatedProduct.name)}
+                    </p>
+                    <p className="text-[#667eea] font-semibold text-sm">
+                      {relatedProduct.price.toLocaleString()} {relatedProduct.currency}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-xl">
+              <p className="text-gray-500">No other products from this shop</p>
+              <Link href={`/shop/${product.shop.id}`} className="inline-block mt-2 text-[#667eea] hover:underline">
+                View {shopName}
+              </Link>
+            </div>
+          )}
         </div>
-      )}
+      </main>
 
       {/* Review Modal */}
       {showReviewModal && (

@@ -7,24 +7,22 @@ import { ProtectedRoute } from "@/components/protected-route";
 import {
   Store,
   Package,
-  ShoppingBag,
   TrendingUp,
   Settings,
   Plus,
   Edit,
   MapPin,
   Phone,
-  Clock,
+  Calendar,
   ChevronRight,
   Loader2,
   AlertCircle,
   Star,
-  Calendar,
   ArrowLeft,
   LogOut,
   Trash2,
   X,
-  Bell
+  RefreshCw
 } from "lucide-react";
 
 interface Shop {
@@ -47,21 +45,7 @@ interface Product {
   product_name_mm?: string;
   image_urls: string[];
   price?: number;
-  booking_fee: number;
   freshness_status: "green" | "orange" | "red";
-  created_at: string;
-}
-
-interface Booking {
-  id: string;
-  product_id: string;
-  product_name: string;
-  user_id: string;
-  user_name?: string;
-  pickup_time: string;
-  status: "pending" | "accepted" | "declined" | "completed" | "cancelled";
-  booking_fee: number;
-  payment_method: "pay" | "watch_ad";
   created_at: string;
 }
 
@@ -85,12 +69,7 @@ export default function ShopDashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState({
     totalViews: 0,
-    totalBookings: 0,
-    pendingBookings: 0,
-    completedBookings: 0,
   });
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [newBookingAlert, setNewBookingAlert] = useState<string | null>(null);
 
   // Handle shop deletion
   const handleDeleteShop = async () => {
@@ -120,52 +99,6 @@ export default function ShopDashboardPage() {
   useEffect(() => {
     fetchShopData();
   }, [user?.uid]);
-
-  // Auto-refresh bookings every 30 seconds
-  useEffect(() => {
-    if (!shop?.shop_id) return;
-
-    const interval = setInterval(() => {
-      fetchBookings();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [shop?.shop_id]);
-
-  const fetchBookings = async () => {
-    if (!shop?.shop_id) return;
-
-    try {
-      const bookingsRes = await fetch(`/api/shops/${shop.shop_id}/bookings`);
-      if (bookingsRes.ok) {
-        const bookingsData = await bookingsRes.json();
-        const newBookings: Booking[] = bookingsData.data || [];
-        
-        // Check for new pending bookings
-        const currentPending = bookings.filter(b => b.status === "pending").length;
-        const newPending = newBookings.filter((b: Booking) => b.status === "pending").length;
-        
-        if (newPending > currentPending && bookings.length > 0) {
-          // Show notification for new booking
-          const latestBooking = newBookings.find((b: Booking) => b.status === "pending" && !bookings.find(ob => ob.id === b.id));
-          if (latestBooking) {
-            setNewBookingAlert(`New booking: ${latestBooking.product_name}`);
-            setTimeout(() => setNewBookingAlert(null), 5000);
-          }
-        }
-        
-        setBookings(newBookings);
-        setStats(prev => ({
-          ...prev,
-          totalBookings: newBookings.length,
-          pendingBookings: newBookings.filter((b: {status: string}) => b.status === "pending").length,
-          completedBookings: newBookings.filter((b: {status: string}) => b.status === "completed").length,
-        }));
-      }
-    } catch {
-      // Silent fail on auto-refresh
-    }
-  };
 
   const fetchShopData = async () => {
     if (!user?.uid) {
@@ -202,21 +135,10 @@ export default function ShopDashboardPage() {
           setProducts(productsData.data?.products || []);
         }
 
-        // Fetch bookings for this shop
-        const bookingsRes = await fetch(`/api/shops/${userShop.shop_id}/bookings`);
-        if (bookingsRes.ok) {
-          const bookingsData = await bookingsRes.json();
-          const bookingsList: Booking[] = bookingsData.data || [];
-          setBookings(bookingsList);
-          
-          // Calculate stats
-          setStats({
-            totalViews: userShop.views || 0,
-            totalBookings: bookingsList.length,
-            pendingBookings: bookingsList.filter((b: {status: string}) => b.status === "pending").length,
-            completedBookings: bookingsList.filter((b: {status: string}) => b.status === "completed").length,
-          });
-        }
+        // Calculate stats
+        setStats({
+          totalViews: userShop.views || 0,
+        });
       }
     } catch (err) {
       setError("Failed to load shop data");
@@ -276,20 +198,6 @@ export default function ShopDashboardPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-        {/* New Booking Notification Toast */}
-        {newBookingAlert && (
-          <div className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-top-2">
-            <Bell className="h-5 w-5" />
-            <span className="font-medium">{newBookingAlert}</span>
-            <button 
-              onClick={() => setNewBookingAlert(null)}
-              className="ml-2 p-1 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-        
         {/* Header */}
         <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 py-4">
@@ -310,14 +218,6 @@ export default function ShopDashboardPage() {
                   title="Delete Shop"
                 >
                   <Trash2 className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => router.push("/shop/bookings")}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium hover:shadow-md transition-all"
-                  title="Manage Bookings"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>Bookings</span>
                 </button>
                 <button
                   onClick={() => router.push("/shop/settings")}
@@ -447,7 +347,7 @@ export default function ShopDashboardPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-white rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -456,33 +356,6 @@ export default function ShopDashboardPage() {
                 <span className="text-sm text-gray-600">Total Views</span>
               </div>
               <p className="text-2xl font-bold text-gray-900">{stats.totalViews}</p>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                 onClick={() => router.push("/shop/bookings")}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <ShoppingBag className="h-4 w-4 text-purple-600" />
-                </div>
-                <span className="text-sm text-gray-600">Total Bookings</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                 onClick={() => router.push("/shop/bookings")}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                </div>
-                <span className="text-sm text-gray-600">Pending</span>
-                {stats.pendingBookings > 0 && (
-                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                    {stats.pendingBookings > 9 ? '9+' : stats.pendingBookings}
-                  </span>
-                )}
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingBookings}</p>
             </div>
 
             <div className="bg-white rounded-xl p-4 border border-gray-100">
@@ -506,16 +379,11 @@ export default function ShopDashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => router.push("/shop/bookings")}
-                    className="flex items-center gap-2 px-4 py-2 border-2 border-[#667eea] text-[#667eea] rounded-xl text-sm font-medium hover:bg-[#667eea] hover:text-white transition-all"
+                    onClick={() => router.push("/shop/products/renew")}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all"
                   >
-                    <Calendar className="h-4 w-4" />
-                    View Bookings
-                    {stats.pendingBookings > 0 && (
-                      <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                        {stats.pendingBookings > 9 ? '9+' : stats.pendingBookings}
-                      </span>
-                    )}
+                    <RefreshCw className="h-4 w-4" />
+                    Renew
                   </button>
                   <button
                     onClick={() => router.push("/shop/products/add")}
@@ -573,7 +441,7 @@ export default function ShopDashboardPage() {
                           )}`}
                         />
                         <span className="text-sm text-gray-500">
-                          {product.price?.toLocaleString() || product.booking_fee.toLocaleString()} MMK
+                          {product.price?.toLocaleString() || "0"} MMK
                         </span>
                       </div>
                     </div>

@@ -12,7 +12,6 @@ interface ProductFormData {
   name_mm: string;
   description: string;
   price: number;
-  booking_fee: number;
   images: File[];
 }
 
@@ -40,7 +39,6 @@ export default function AddProductPage() {
     name_mm: "",
     description: "",
     price: 0,
-    booking_fee: 500,
     images: [],
   });
 
@@ -65,8 +63,8 @@ export default function AddProductPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + formData.images.length > 1) {
-      setError("Maximum 1 image allowed");
+    if (files.length + formData.images.length > 5) {
+      setError("Maximum 5 images allowed");
       e.target.value = ""; // Reset input
       return;
     }
@@ -141,7 +139,6 @@ export default function AddProductPage() {
           product_name_mm: formData.name_mm,
           description: formData.description,
           price: formData.price,
-          booking_fee: formData.booking_fee,
           image_urls: imageUrls,
         }),
       });
@@ -184,7 +181,6 @@ export default function AddProductPage() {
                   name_mm: "",
                   description: "",
                   price: 0,
-                  booking_fee: 500,
                   images: [],
                 });
                 setImagePreviews([]);
@@ -227,7 +223,7 @@ export default function AddProductPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Product Name */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -246,7 +242,7 @@ export default function AddProductPage() {
             {/* Product Name (Myanmar) */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Name (Myanmar) <span className="text-gray-400">(Optional)</span>
+                Product Name (Myanmar)
               </label>
               <input
                 type="text"
@@ -296,37 +292,14 @@ export default function AddProductPage() {
               </p>
             </div>
 
-            {/* Booking Fee */}
+            {/* Image Upload */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Booking Fee (MMK) <span className="text-red-500">*</span>
+                Product Images <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="number"
-                  value={formData.booking_fee || ""}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const numValue = value === "" ? 0 : parseInt(value.replace(/^0+/, ""), 10) || 0;
-                    setFormData(prev => ({ ...prev, booking_fee: numValue }));
-                  }}
-                  min={500}
-                  step={100}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
-                  required
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Minimum 500 MMK. Customer pays this to book the product.
+              <p className="text-sm text-gray-500 mb-3">
+                Upload up to 5 images (max 5MB each)
               </p>
-            </div>
-
-            {/* Images */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Image <span className="text-red-500">*</span>
-              </label>
               
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
@@ -351,18 +324,21 @@ export default function AddProductPage() {
               )}
 
               {/* Upload Button */}
-              {imagePreviews.length < 1 && (
+              {imagePreviews.length < 5 && (
                 <label className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#667eea] hover:bg-gray-50 transition-colors">
                   <div className="text-center">
                     <ImagePlus className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                     <span className="text-sm text-gray-500">Add Photo</span>
+                    <span className="text-xs text-gray-400 block mt-1">
+                      {imagePreviews.length}/5
+                    </span>
                   </div>
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleImageChange}
                     className="hidden"
-                    required={imagePreviews.length === 0}
                   />
                 </label>
               )}

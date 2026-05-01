@@ -22,7 +22,6 @@ interface ProductFormData {
   name_mm: string;
   description: string;
   price: number;
-  booking_fee: number;
   images: File[];
   existingImages: string[];
 }
@@ -45,7 +44,6 @@ export default function EditProductPage() {
     name_mm: "",
     description: "",
     price: 0,
-    booking_fee: 500,
     images: [],
     existingImages: [],
   });
@@ -94,7 +92,6 @@ export default function EditProductPage() {
             name_mm: product.name_mm || "",
             description: product.description || "",
             price: product.price || 0,
-            booking_fee: product.booking_fee || 500,
             images: [],
             existingImages: product.image_urls || [],
           });
@@ -115,10 +112,10 @@ export default function EditProductPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    // Validate file count (max 1 total)
+    // Validate file count (max 5 total)
     const totalImages = formData.existingImages.length + formData.images.length + files.length;
-    if (totalImages > 1) {
-      setError("Maximum 1 image allowed");
+    if (totalImages > 5) {
+      setError("Maximum 5 images allowed");
       e.target.value = ""; // Reset input
       return;
     }
@@ -211,7 +208,6 @@ export default function EditProductPage() {
           product_name_mm: formData.name_mm,
           description: formData.description,
           price: formData.price,
-          booking_fee: formData.booking_fee,
           image_urls: allImages,
         }),
       });
@@ -366,43 +362,20 @@ export default function EditProductPage() {
               <p className="text-sm text-gray-500 mt-1">Actual price of the product</p>
             </div>
 
-            {/* Booking Fee */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Booking Fee <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="number"
-                  value={formData.booking_fee || ""}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Remove leading zeros and convert to number
-                    const numValue = value === "" ? 0 : parseInt(value.replace(/^0+/, ""), 10) || 0;
-                    setFormData(prev => ({ ...prev, booking_fee: numValue }));
-                  }}
-                  min={500}
-                  step="100"
-                  className="w-full pl-12 pr-16 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
-                  required
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">MMK</span>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">Amount customer pays to book this product (minimum 500 MMK)</p>
-            </div>
-
             {/* Images */}
             <div className="mb-8">
               <label className="block text-sm font-medium text-black mb-2">
-                Product Image <span className="text-red-500">*</span> <span className="text-gray-500">(Required, Max 1)</span>
+                Product Images <span className="text-red-500">*</span>
               </label>
+              <p className="text-sm text-gray-500 mb-3">
+                Upload up to 5 images (max 5MB each)
+              </p>
               
               {/* Image Preview */}
               {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-1 gap-3 mb-4 max-w-xs">
+                <div className="flex flex-wrap gap-3 mb-4">
                   {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden">
+                    <div key={index} className="relative w-24 h-24 bg-gray-100 rounded-xl overflow-hidden">
                       <img
                         src={preview}
                         alt={`Preview ${index + 1}`}
@@ -411,7 +384,7 @@ export default function EditProductPage() {
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -421,13 +394,19 @@ export default function EditProductPage() {
               )}
               
               {/* Add Image Button */}
-              {imagePreviews.length === 0 && (
-                <label className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#667eea] hover:bg-[#667eea]/5 transition-all cursor-pointer">
-                  <ImagePlus className="h-5 w-5 text-black" />
-                  <span className="text-black font-medium">Add Image</span>
+              {imagePreviews.length < 5 && (
+                <label className="flex items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#667eea] hover:bg-[#667eea]/5 transition-all cursor-pointer">
+                  <div className="text-center">
+                    <ImagePlus className="h-5 w-5 text-black mx-auto mb-1" />
+                    <span className="text-black font-medium text-sm">Add Image</span>
+                    <span className="text-xs text-gray-400 block mt-1">
+                      {imagePreviews.length}/5
+                    </span>
+                  </div>
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleImageChange}
                     className="hidden"
                   />

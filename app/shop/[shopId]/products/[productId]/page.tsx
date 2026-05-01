@@ -12,19 +12,15 @@ import {
   Phone,
   Star,
   Store,
-  Calendar,
   Package,
   X,
-  Clock,
-  CreditCard,
-  PlayCircle,
   Check,
   ChevronRight,
   Heart,
   Share2,
   Truck,
   Shield,
-  RotateCcw
+  Clock
 } from "lucide-react";
 
 interface Shop {
@@ -49,9 +45,9 @@ interface Product {
   description?: string;
   image_urls: string[];
   price: number;
-  booking_fee: number;
   currency: string;
   upload_timestamp: string;
+  created_at?: string;
   freshness_badge: "green" | "orange" | "red";
 }
 
@@ -92,13 +88,14 @@ export default function ProductDetailPage() {
   // Image gallery state
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   
-  // Booking modal state
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [pickupTime, setPickupTime] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"pay" | "watch_ad">("pay");
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+  // Review state
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewerName, setReviewerName] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Load language preference
   useEffect(() => {
@@ -160,43 +157,47 @@ export default function ProductDetailPage() {
     localStorage.setItem("preferred_language", newLang);
   };
 
-  // Handle booking creation
-  const handleBooking = async () => {
-    if (!pickupTime) {
-      setBookingError(language === "en" ? "Please select a pickup time" : "ကောက်ယူရန် အချိန် ရွေးချယ်ပါ");
+  // Handle review submission
+  const handleReview = async () => {
+    setReviewError(null);
+
+    if (!reviewerName.trim()) {
+      setReviewError(language === "en" ? "Please enter your name" : "သင့်နာမည်ထည့်ပါ");
       return;
     }
 
-    setBookingLoading(true);
-    setBookingError(null);
+    if (reviewRating === 0) {
+      setReviewError(language === "en" ? "Please select a rating" : "အဆင့်ရွေးပါ");
+      return;
+    }
+
+    setReviewLoading(true);
 
     try {
-      const response = await fetch("/api/bookings", {
+      const res = await fetch(`/api/products/${productId}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          product_id: productId,
-          pickup_time: new Date(pickupTime).toISOString(),
-          payment_method: paymentMethod,
+          reviewer_name: reviewerName,
+          rating: reviewRating,
+          review_text: reviewText,
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to create booking");
+      if (!res.ok) {
+        throw new Error("Failed to submit review");
       }
 
-      setBookingSuccess(true);
-      
-      // Redirect to booking confirmation after 2 seconds
-      setTimeout(() => {
-        router.push(`/booking/${data.data.id}`);
-      }, 2000);
+      const data = await res.json();
+      setReviews([data.data, ...reviews]);
+      setShowReviewModal(false);
+      setReviewerName("");
+      setReviewRating(5);
+      setReviewText("");
     } catch (err) {
-      setBookingError(err instanceof Error ? err.message : "Failed to create booking");
+      setReviewError(err instanceof Error ? err.message : "Failed to submit review");
     } finally {
-      setBookingLoading(false);
+      setReviewLoading(false);
     }
   };
 
@@ -234,6 +235,38 @@ export default function ProductDetailPage() {
     : product.product_name;
   const shopName = language === "my" && shop.name_mm ? shop.name_mm : shop.name;
   const freshness = freshnessColors[product.freshness_badge];
+
+  // Helper function to get relative time (e.g., "5 days ago")
+  const getRelativeTime = (dateString: string, lang: "en" | "my"): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (lang === "my") {
+      if (diffSecs < 60) return "လွန်ခဲ့သော စက္ကန့်အနည်းငယ်";
+      if (diffMins < 60) return `လွန်ခဲ့သော ${diffMins} မိနစ်`;
+      if (diffHours < 24) return `လွန်ခဲ့သော ${diffHours} နာရီ`;
+      if (diffDays < 7) return `လွန်ခဲ့သော ${diffDays} ရက်`;
+      if (diffWeeks < 4) return `လွန်ခဲ့သော ${diffWeeks} ပတ်`;
+      if (diffMonths < 12) return `လွန်ခဲ့သော ${diffMonths} လ`;
+      return `လွန်ခဲ့သော ${diffYears} နှစ်`;
+    } else {
+      if (diffSecs < 60) return "Just now";
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+      if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? "s" : ""} ago`;
+      if (diffMonths < 12) return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+      return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
+    }
+  };
   
   // Get product features for "About this item" section
   const productFeatures = product.description 
@@ -320,11 +353,11 @@ export default function ProductDetailPage() {
                 </div>
               )}
               
-              {/* Freshness Badge */}
+              {/* Time Ago Badge */}
               <div className="absolute top-4 right-4">
-                <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${freshness.bg} ${freshness.text} flex items-center gap-1.5 shadow-sm`}>
-                  <span className={`w-2 h-2 rounded-full ${freshness.dot}`} />
-                  {freshnessLabels[language][product.freshness_badge]}
+                <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-700 flex items-center gap-1.5 shadow-sm">
+                  <Clock className="h-3.5 w-3.5" />
+                  {getRelativeTime(product.created_at || product.upload_timestamp, language)}
                 </span>
               </div>
 
@@ -379,10 +412,6 @@ export default function ProductDetailPage() {
                     {product.price.toLocaleString()}
                   </span>
                 </div>
-                <div className="text-sm text-black mb-3">
-                  + {product.booking_fee.toLocaleString()} {product.currency} {language === "en" ? "booking fee" : "ဘွတ်ကင်အခကြေး"}
-                </div>
-                
                 {/* Features */}
                 <div className="flex items-center gap-4 text-sm text-black">
                   <div className="flex items-center gap-1">
@@ -391,26 +420,20 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Shield className="h-4 w-4 text-green-600" />
-                    <span>{language === "en" ? "Secure booking" : "လုံခြုံမှု"}</span>
+                    <span>{language === "en" ? "Available now" : "ယခုရရှိနိုင်သည်"}</span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    if (!user) {
-                      router.push("/auth");
-                      return;
-                    }
-                    setShowBookingModal(true);
-                  }}
+                <Link
+                  href={`/map?shop=${shop.shop_id}&lat=${shop.latitude}&lng=${shop.longitude}&name=${encodeURIComponent(shop.name)}`}
                   className="w-full py-3.5 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <Calendar className="h-5 w-5" />
-                  {language === "en" ? "Book Now" : "ဘွတ်ကင်လုပ်ရန်"}
-                </button>
+                  <MapPin className="h-5 w-5" />
+                  {language === "en" ? "Get Directions" : "လမ်းညွှန်ရန်"}
+                </Link>
                 
                 <div className="grid grid-cols-2 gap-3">
                   <button className="py-3 border-2 border-gray-300 rounded-xl font-medium text-black hover:border-gray-400 transition-colors flex items-center justify-center gap-2">
@@ -516,162 +539,148 @@ export default function ProductDetailPage() {
                   <p className="text-lg font-bold text-[#667eea] mt-1">
                     {item.price.toLocaleString()} {item.currency}
                   </p>
-                  <p className="text-xs text-black">
-                    + {item.booking_fee.toLocaleString()} {item.currency} {language === "en" ? "booking fee" : ""}
-                  </p>
-                </Link>
+                  </Link>
               ))}
             </div>
           </div>
         )}
       </main>
 
-      {/* Booking Modal */}
-      {showBookingModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            {bookingSuccess ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-8 w-8 text-green-600" />
+      {/* Reviews Section */}
+      <div className="border-t border-gray-200 pt-8 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-black">
+            {language === "en" ? "Reviews" : "သုံးသပ်ချက်များ"} ({reviews.length})
+          </h2>
+          <button
+            onClick={() => setShowReviewModal(true)}
+            className="text-[#667eea] font-medium hover:underline"
+          >
+            {language === "en" ? "Write a Review" : "သုံးသပ်ရေးသားရန်"}
+          </button>
+        </div>
+
+        {reviews.length === 0 ? (
+          <div className="text-center py-8 bg-gray-50 rounded-xl">
+            <p className="text-black">
+              {language === "en" ? "No reviews yet. Be the first to review!" : "သုံးသပ်ချက်များ မရှိသေးပါ။ ပထမဆုံးသုံးသပ်ရေးသားပါ!"}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-gray-50 rounded-xl p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="font-medium text-black">{review.reviewer_name}</p>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span className="font-semibold text-black">{review.rating}</span>
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold text-black mb-2">
-                  {language === "en" ? "Booking Confirmed!" : "ဘွတ်ကင် အောင်မြင်ပါသည်!"}
-                </h3>
-                <p className="text-black">
-                  {language === "en" ? "Redirecting to your booking..." : "ဘွတ်ကင်သို့ ပြန်ညွှန်နေသည်..."}
+                <p className="text-sm text-black">{review.review_text}</p>
+                <p className="text-xs text-black mt-2">
+                  {new Date(review.created_at).toLocaleDateString()}
                 </p>
               </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-black">
-                    {language === "en" ? "Book Product" : "ပစ္စည်းဘွတ်ကင်ရန်"}
-                  </h3>
-                  <button
-                    onClick={() => setShowBookingModal(false)}
-                    className="p-1 rounded-full hover:bg-gray-100"
-                  >
-                    <X className="h-5 w-5 text-gray-500" />
-                  </button>
-                </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-                {bookingError && (
-                  <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                    {bookingError}
-                  </div>
-                )}
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-black">
+                {language === "en" ? "Write a Review" : "သုံးသပ်ရေးသားရန်"}
+              </h3>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
 
-                {/* Pickup Time */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-black mb-2">
-                    <Clock className="h-4 w-4 inline mr-1" />
-                    {language === "en" ? "Pickup Time" : "ကောက်ယူရန် အချိန်"}
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={pickupTime}
-                    onChange={(e) => setPickupTime(e.target.value)}
-                    min={new Date().toISOString().slice(0, 16)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#667eea] text-black"
-                  />
-                  <p className="text-xs text-black mt-1">
-                    {language === "en" ? "Select when you want to pick up the product" : "ပစ္စည်းကောက်ယူလိုသည့် အချိန်ကို ရွေးပါ"}
-                  </p>
-                </div>
-
-                {/* Payment Method */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-black mb-2">
-                    {language === "en" ? "Payment Method" : "ငွေပေးချေခြင်း နည်းလမ်း"}
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setPaymentMethod("pay")}
-                      className={`p-4 border rounded-xl flex flex-col items-center gap-2 transition-all ${
-                        paymentMethod === "pay"
-                          ? "border-[#667eea] bg-[#667eea]/5"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <CreditCard className="h-6 w-6 text-[#667eea]" />
-                      <span className="text-sm font-medium text-black">
-                        {language === "en" ? "Pay" : "ငွေပေး"}
-                      </span>
-                      <span className="text-xs text-black">
-                        {product?.booking_fee.toLocaleString()} {product?.currency}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setPaymentMethod("watch_ad")}
-                      className={`p-4 border rounded-xl flex flex-col items-center gap-2 transition-all ${
-                        paymentMethod === "watch_ad"
-                          ? "border-[#667eea] bg-[#667eea]/5"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <PlayCircle className="h-6 w-6 text-[#667eea]" />
-                      <span className="text-sm font-medium text-black">
-                        {language === "en" ? "Watch Ad" : "ကြော်ငြာကြည့်"}
-                      </span>
-                      <span className="text-xs text-black">
-                        {language === "en" ? "Free" : "အခမဲ့"}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Booking Summary */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-                  <h4 className="font-medium text-black mb-2">
-                    {language === "en" ? "Booking Summary" : "ဘွတ်ကင်အကျဉ်းချုပ်"}
-                  </h4>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-black">{displayName}</span>
-                    <span className="font-medium text-black">{product?.price.toLocaleString()} {product?.currency}</span>
-                  </div>
-                  {paymentMethod === "pay" && (
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-black">{language === "en" ? "Booking Fee" : "ဘွတ်ကင်အခကြေး"}</span>
-                      <span className="font-medium text-black">{product?.booking_fee.toLocaleString()} {product?.currency}</span>
-                    </div>
-                  )}
-                  <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between">
-                    <span className="font-medium text-black">{language === "en" ? "Total" : "စုစုပေါင်း"}</span>
-                    <span className="font-bold text-[#667eea]">
-                      {paymentMethod === "pay" 
-                        ? `${((product?.price || 0) + (product?.booking_fee || 0)).toLocaleString()} ${product?.currency}`
-                        : language === "en" ? "Free" : "အခမဲ့"
-                      }
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowBookingModal(false)}
-                    className="flex-1 py-3 border border-gray-300 rounded-xl font-medium text-black hover:bg-gray-50 transition-colors"
-                  >
-                    {language === "en" ? "Cancel" : "မလုပ်တော့ပါ"}
-                  </button>
-                  <button
-                    onClick={handleBooking}
-                    disabled={bookingLoading || !pickupTime}
-                    className="flex-1 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {bookingLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {language === "en" ? "Processing..." : "လုပ်ဆောင်နေသည်..."}
-                      </>
-                    ) : (
-                      language === "en" ? "Confirm Booking" : "ဘွတ်ကင်အတည်ပြုရန်"
-                    )}
-                  </button>
-                </div>
-              </>
+            {reviewError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+                {reviewError}
+              </div>
             )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  {language === "en" ? "Your Name" : "သင့်နာမည်"}
+                </label>
+                <input
+                  type="text"
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#667eea] text-black"
+                  placeholder={language === "en" ? "Enter your name" : "သင့်နာမည်ထည့်ပါ"}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  {language === "en" ? "Rating" : "အဆင့်"}
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setReviewRating(star)}
+                      className="p-1"
+                    >
+                      <Star
+                        className={`h-8 w-8 ${
+                          star <= reviewRating
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  {language === "en" ? "Review (optional)" : "သုံးသပ်ချက် (ချန်လှပ်နိုင်)"}
+                </label>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#667eea] text-black h-32 resize-none"
+                  placeholder={language === "en" ? "Share your experience..." : "သင့်အတွေ့အကြားမျှဝေပါ..."}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="flex-1 py-3 border border-gray-300 rounded-xl font-medium text-black hover:bg-gray-50 transition-colors"
+                >
+                  {language === "en" ? "Cancel" : "မလုပ်တော့ပါ"}
+                </button>
+                <button
+                  onClick={handleReview}
+                  disabled={reviewLoading}
+                  className="flex-1 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {reviewLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {language === "en" ? "Submitting..." : "တင်နေသည်..."}
+                    </>
+                  ) : (
+                    language === "en" ? "Submit Review" : "သုံးသပ်ချက်တင်ရန်"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
