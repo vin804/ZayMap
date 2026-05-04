@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { collection, getDocs, query, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { calculateDistance } from "./use-geolocation";
 
 export interface Shop {
@@ -32,12 +30,6 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
   const lastFetchLocation = useRef<{ lat: number; lon: number } | null>(null);
 
   const fetchShops = useCallback(async (force = false) => {
-    if (!db) {
-      setError("Database not initialized");
-      setLoading(false);
-      return;
-    }
-
     // Validate user location
     if (!userLat || !userLon || isNaN(userLat) || isNaN(userLon)) {
       console.log("[useShopsNearby] Invalid user location:", userLat, userLon);
@@ -66,59 +58,54 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
     try {
       console.log(`[useShopsNearby] Fetching shops for location (${userLat}, ${userLon}) with radius ${radiusKm}km`);
       
-      // Fetch all shops (for MVP, client-side filtering)
-      const shopsRef = collection(db, "shops");
-      const q = query(shopsRef, limit(500)); // Limit for performance
-      const snapshot = await getDocs(q);
-      
-      console.log(`[useShopsNearby] Fetched ${snapshot.size} shops from Firestore`);
-
-      const shopsData: Shop[] = [];
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        
-        // Handle both GeoPoint location field and separate lat/lng fields
-        const latitude = data.location?.latitude ?? data.latitude ?? 0;
-        const longitude = data.location?.longitude ?? data.longitude ?? 0;
-        
-        if (latitude === 0 || longitude === 0) {
-          console.warn(`[useShopsNearby] Shop ${doc.id} has invalid coordinates`);
-          return;
-        }
-        
-        const shop: Shop = {
-          shopId: doc.id,
-          name: data.name || "Unnamed Shop",
-          category: data.category || "General",
-          latitude,
-          longitude,
-          address: data.address || "",
-          phone: data.phone,
-          rating: data.rating,
-          logoUrl: data.logo_url || data.logoUrl,
-          createdAt: data.createdAt?.toDate?.(),
-        };
-
-        // Calculate distance using Haversine formula
-        const distance = calculateDistance(
-          userLat,
-          userLon,
-          shop.latitude,
-          shop.longitude
-        );
-
-        // Only include shops within radius
-        if (distance <= radiusKm) {
-          shopsData.push({ ...shop, distance });
-          console.log(`[useShopsNearby] Shop ${doc.id} included: ${distance.toFixed(2)}km away`);
-        } else {
-          console.log(`[useShopsNearby] Shop ${doc.id} excluded: ${distance.toFixed(2)}km > ${radiusKm}km`);
-        }
+      // Use search API to get shops with calculated ratings
+      const response = await fetch('/api/shops/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: '',
+          categories: [],
+          radius_km: radiusKm,
+          user_location: {
+            latitude: userLat,
+            longitude: userLon,
+          },
+        }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Search API error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      const apiShops = result.data || [];
+      
+      console.log(`[useShopsNearby] Fetched ${apiShops.length} shops from Search API`);
 
-      // Sort by distance (closest first)
-      shopsData.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      // Convert API response to Shop format
+      const shopsData: Shop[] = apiShops.map((shop: {
+        shop_id: string;
+        name: string;
+        category: string;
+        latitude: number;
+        longitude: number;
+        distance_km?: number;
+        rating?: number;
+        logo_url?: string;
+        address?: string;
+        phone?: string;
+      }) => ({
+        shopId: shop.shop_id,
+        name: shop.name,
+        category: shop.category,
+        latitude: shop.latitude,
+        longitude: shop.longitude,
+        distance: shop.distance_km,
+        rating: shop.rating,
+        logoUrl: shop.logo_url,
+        address: shop.address || "",
+        phone: shop.phone,
+      }));
 
       console.log(`[useShopsNearby] Found ${shopsData.length} shops within ${radiusKm}km`);
       setShops(shopsData);

@@ -37,6 +37,7 @@ interface Product {
   freshness_status: FreshnessStatus;
   uploaded_at: string;
   shop_rating: number;
+  product_rating: number;
   latitude: number;
   longitude: number;
 }
@@ -76,6 +77,20 @@ const FRESHNESS_PRIORITY: Record<FreshnessStatus, number> = {
   orange: 2,
   red: 1,
 };
+
+// Calculate freshness based on upload timestamp
+function calculateFreshness(uploadTimestamp: string): FreshnessStatus {
+  const upload = new Date(uploadTimestamp);
+  const now = new Date();
+  const hoursDiff = (now.getTime() - upload.getTime()) / (1000 * 60 * 60);
+  
+  // Fresh: less than 2 days (48 hours)
+  if (hoursDiff < 48) return "green";
+  // Recent: 2-10 days (48-240 hours)
+  if (hoursDiff < 240) return "orange";
+  // Old: more than 10 days
+  return "red";
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -155,6 +170,32 @@ export async function POST(request: NextRequest) {
       
       // Only include products within radius
       if (distance <= radius_km) {
+        const uploadedAt = data.upload_timestamp || data.created_at || new Date().toISOString();
+        
+        // Fetch product reviews to calculate product rating
+        let productRating = 0;
+        try {
+          const reviewsRef = collection(db, "reviews");
+          const reviewsQuery = firestoreQuery(
+            reviewsRef,
+            where("product_id", "==", productDoc.id)
+          );
+          const reviewsSnapshot = await getDocs(reviewsQuery);
+          let totalRating = 0;
+          let reviewCount = 0;
+          reviewsSnapshot.forEach((reviewDoc) => {
+            const reviewData = reviewDoc.data();
+            if (reviewData.rating) {
+              totalRating += reviewData.rating;
+              reviewCount++;
+            }
+          });
+          productRating = reviewCount > 0 ? totalRating / reviewCount : 0;
+        } catch (err) {
+          console.error(`Error fetching reviews for product ${productDoc.id}:`, err);
+          // Use 0 rating on error
+        }
+        
         const product: Product = {
           product_id: productDoc.id,
           product_name: data.product_name || data.name || "",
@@ -166,9 +207,10 @@ export async function POST(request: NextRequest) {
           price: data.price || 0,
           booking_fee: data.booking_fee || 0,
           currency: data.currency || "MMK",
-          freshness_status: data.freshness_status || "green",
-          uploaded_at: data.upload_timestamp || data.created_at || new Date().toISOString(),
+          freshness_status: calculateFreshness(uploadedAt),
+          uploaded_at: uploadedAt,
           shop_rating: shopData.rating || 0,
+          product_rating: productRating,
           latitude: shopData.latitude,
           longitude: shopData.longitude,
         };
@@ -200,12 +242,9 @@ export async function POST(request: NextRequest) {
       return a.distance_km - b.distance_km;
     });
 
-    // Limit results to 20
-    const limitedProducts = products.slice(0, 20);
-
     // Format response
     const response = {
-      data: limitedProducts.map((product) => ({
+      data: products.map((product) => ({
         product_id: product.product_id,
         product_name: product.product_name,
         product_name_mm: product.product_name_mm,
@@ -214,11 +253,11 @@ export async function POST(request: NextRequest) {
         shop_name_mm: product.shop_name_mm,
         image_url: product.image_url,
         price: product.price,
-        booking_fee: product.booking_fee,
         currency: product.currency,
         freshness_status: product.freshness_status,
         uploaded_at: product.uploaded_at,
         shop_rating: product.shop_rating,
+        product_rating: product.product_rating,
         distance_km: product.distance_km,
       })),
       meta: {

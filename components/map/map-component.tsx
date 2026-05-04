@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap } from "leaflet";
-import { YANGON_COORDINATES, MYANMAR_BOUNDS, TILE_LAYER_URL, TILE_LAYER_ATTRIBUTION } from "@/lib/leaflet-config";
+import { YANGON_COORDINATES, MYANMAR_BOUNDS, TILE_LAYER_URL, TILE_LAYER_ATTRIBUTION, SATELLITE_TILE_URL, SATELLITE_ATTRIBUTION, LABELS_TILE_URL, LABELS_ATTRIBUTION } from "@/lib/leaflet-config";
 import { Loader2, MapPin, AlertCircle } from "lucide-react";
 
 // Unified shop interface for map display
@@ -45,6 +45,11 @@ interface MapComponentProps {
   initialCenter?: { lat: number; lng: number } | null;
   radius?: number; // Search radius in km
   route?: RouteData | null;
+  flyToUserLocation?: boolean; // Trigger fly to user location
+  onFlyComplete?: () => void; // Callback when fly completes
+  mapType?: 'street' | 'satellite'; // Map tile layer type
+  actualUserLat?: number; // Actual GPS location for fly-to-me button
+  actualUserLon?: number; // Actual GPS location for fly-to-me button
 }
 
 export function MapComponent({
@@ -61,6 +66,11 @@ export function MapComponent({
   initialCenter,
   radius = 5, // Default 5km
   route,
+  flyToUserLocation,
+  onFlyComplete,
+  mapType = 'street',
+  actualUserLat,
+  actualUserLon,
 }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
@@ -72,6 +82,8 @@ export function MapComponent({
   const routeStartMarkerRef = useRef<unknown>(null);
   const routeEndMarkerRef = useRef<unknown>(null);
   const zoomRef = useRef<number>(14); // Track current zoom level
+  const baseTileLayerRef = useRef<unknown>(null);
+  const labelsTileLayerRef = useRef<unknown>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // Load Leaflet dynamically
@@ -125,12 +137,33 @@ export function MapComponent({
       zoomRef.current = map.getZoom();
     });
 
-    // Add tile layer
-    L.tileLayer(TILE_LAYER_URL, {
-      attribution: TILE_LAYER_ATTRIBUTION,
-      maxZoom: 18,
-      minZoom: 5, // Allow zooming out to see entire country
-    }).addTo(map);
+    // Add base tile layer based on mapType
+    if (mapType === 'satellite') {
+      const satelliteLayer = L.tileLayer(SATELLITE_TILE_URL, {
+        attribution: SATELLITE_ATTRIBUTION,
+        maxZoom: 18,
+        minZoom: 5,
+      }).addTo(map);
+      baseTileLayerRef.current = satelliteLayer;
+
+      // Add labels overlay on top of satellite
+      const labelsLayer = L.tileLayer(LABELS_TILE_URL, {
+        attribution: LABELS_ATTRIBUTION,
+        maxZoom: 18,
+        minZoom: 5,
+        pane: 'tilePane',
+      }).addTo(map);
+      labelsLayer.setZIndex(250);
+      labelsTileLayerRef.current = labelsLayer;
+    } else {
+      // Street map
+      const streetLayer = L.tileLayer(TILE_LAYER_URL, {
+        attribution: TILE_LAYER_ATTRIBUTION,
+        maxZoom: 18,
+        minZoom: 5,
+      }).addTo(map);
+      baseTileLayerRef.current = streetLayer;
+    }
 
     // Create Myanmar mask overlay (hide other countries)
     map.createPane("myanmarMask");
@@ -254,33 +287,89 @@ export function MapComponent({
     }
   }, [userLat, userLon, leafletLoaded]);
 
-  // Update radius circle
+  // Fly to user location when button is clicked
+  useEffect(() => {
+    // Use actual GPS location if available, otherwise fall back to userLat/userLon
+    const targetLat = actualUserLat ?? userLat;
+    const targetLon = actualUserLon ?? userLon;
+    
+    if (!mapInstanceRef.current || !leafletLoaded || !flyToUserLocation || !targetLat || !targetLon) return;
+
+    const map = mapInstanceRef.current as { flyTo: (coords: [number, number], zoom: number, options?: { duration?: number }) => void };
+    map.flyTo([targetLat, targetLon], 15, { duration: 1.5 });
+
+    if (onFlyComplete) {
+      onFlyComplete();
+    }
+  }, [flyToUserLocation, userLat, userLon, actualUserLat, actualUserLon, leafletLoaded, onFlyComplete]);
+
+  // Switch tile layers when mapType changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !leafletLoaded || !baseTileLayerRef.current) return;
+
+    const L: typeof import("leaflet") = window.L || require("leaflet");
+    const map = mapInstanceRef.current as L.Map;
+    const baseLayer = baseTileLayerRef.current as L.TileLayer;
+
+    // Remove existing base layer
+    map.removeLayer(baseLayer);
+
+    // Add new base layer based on mapType
+    if (mapType === 'satellite') {
+      const satelliteLayer = L.tileLayer(SATELLITE_TILE_URL, {
+        attribution: SATELLITE_ATTRIBUTION,
+        maxZoom: 18,
+        minZoom: 5,
+      }).addTo(map);
+      baseTileLayerRef.current = satelliteLayer;
+
+      // Add labels overlay on top of satellite
+      if (!labelsTileLayerRef.current) {
+        const labelsLayer = L.tileLayer(LABELS_TILE_URL, {
+          attribution: LABELS_ATTRIBUTION,
+          maxZoom: 18,
+          minZoom: 5,
+          pane: 'tilePane',
+        }).addTo(map);
+        // Bring labels to front
+        labelsLayer.setZIndex(250);
+        labelsTileLayerRef.current = labelsLayer;
+      }
+    } else {
+      // Street map
+      const streetLayer = L.tileLayer(TILE_LAYER_URL, {
+        attribution: TILE_LAYER_ATTRIBUTION,
+        maxZoom: 18,
+        minZoom: 5,
+      }).addTo(map);
+      baseTileLayerRef.current = streetLayer;
+
+      // Remove labels layer if it exists
+      if (labelsTileLayerRef.current) {
+        map.removeLayer(labelsTileLayerRef.current as L.Layer);
+        labelsTileLayerRef.current = null;
+      }
+    }
+  }, [mapType, leafletLoaded]);
+
+  // Update radius circle - optimized to use setRadius instead of recreating
   useEffect(() => {
     if (!mapInstanceRef.current || !leafletLoaded || !userLat || !userLon) return;
 
     const L: typeof import("leaflet") = window.L || require("leaflet");
     const map = mapInstanceRef.current as L.Map;
 
-    // Remove existing radius circle and label
-    if (radiusCircleRef.current) {
-      try {
-        map.removeLayer(radiusCircleRef.current as L.Layer);
-      } catch {
-        // Ignore errors if layer already removed
-      }
-    }
-    if (radiusLabelRef.current) {
-      try {
-        map.removeLayer(radiusLabelRef.current as L.Layer);
-      } catch {
-        // Ignore errors if layer already removed
-      }
-    }
-
     // Convert km to meters for Leaflet
     const radiusMeters = radius * 1000;
 
-    // Create radius circle centered on user location
+    // If circle already exists, just update radius
+    if (radiusCircleRef.current) {
+      const circle = radiusCircleRef.current as L.Circle;
+      circle.setRadius(radiusMeters);
+      return;
+    }
+
+    // Create radius circle centered on user location (only once)
     const circle = L.circle([userLat, userLon], {
       radius: radiusMeters,
       color: "#667eea",
@@ -292,44 +381,48 @@ export function MapComponent({
 
     radiusCircleRef.current = circle;
 
-    // Add a user icon at the center of the radius
-    const userIcon = L.divIcon({
-      className: "user-location-icon",
-      html: `<div style="
-        width: 32px;
-        height: 32px;
-        background: #667eea;
-        border: 3px solid white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      ">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="4"></circle>
-          <path d="M4 20v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
-        </svg>
-      </div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-    });
+    // Add a user icon at the center of the radius (only once)
+    if (!radiusLabelRef.current) {
+      const userIcon = L.divIcon({
+        className: "user-location-icon",
+        html: `<div style="
+          width: 32px;
+          height: 32px;
+          background: #667eea;
+          border: 3px solid white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 20v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path>
+          </svg>
+        </div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
 
-    const label = L.marker([userLat, userLon], {
-      icon: userIcon,
-      zIndexOffset: 2000,
-      interactive: false,
-    }).addTo(map);
+      const label = L.marker([userLat, userLon], {
+        icon: userIcon,
+        zIndexOffset: 2000,
+        interactive: false,
+      }).addTo(map);
 
-    radiusLabelRef.current = label;
+      radiusLabelRef.current = label;
+    }
 
     return () => {
       try {
         if (radiusCircleRef.current) {
           map.removeLayer(radiusCircleRef.current as L.Layer);
+          radiusCircleRef.current = null;
         }
         if (radiusLabelRef.current) {
           map.removeLayer(radiusLabelRef.current as L.Layer);
+          radiusLabelRef.current = null;
         }
       } catch {
         // Ignore errors if layers already removed

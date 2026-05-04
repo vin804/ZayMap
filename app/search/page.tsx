@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, MapPin, History, ChevronLeft, Loader2 } from "lucide-react";
+import { Search, X, MapPin, History, ChevronLeft, Loader2, Heart } from "lucide-react";
 import { ShopCard } from "@/components/search/shop-card";
 import { CategoryFilter } from "@/components/search/category-filter";
 import { useShopSearch, useRecentSearches, SearchFilters } from "@/hooks/use-shop-search";
@@ -207,21 +207,32 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+      <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200/20">
         <div className="max-w-7xl mx-auto px-4 py-4">
           {/* Back button and title */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/map")}
+                className="p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5 text-[var(--text-gray)]" />
+              </button>
+              <h1 className="text-lg font-semibold text-[var(--text-dark)]">
+                {activeTab === "shops" ? "Search Shops" : "Search Products"}
+              </h1>
+            </div>
+            
+            {/* Saved Products Link */}
             <button
-              onClick={() => router.push("/map")}
-              className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+              onClick={() => router.push("/saved")}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[#667eea] hover:bg-[#667eea]/10 hover:border-[#667eea]/30 rounded-lg transition-all"
             >
-              <ChevronLeft className="h-5 w-5 text-gray-600" />
+              <Heart className="h-4 w-4" />
+              <span className="text-sm font-medium">Saved</span>
             </button>
-            <h1 className="text-lg font-semibold text-gray-900">
-              {activeTab === "shops" ? "Search Shops" : "Search Products"}
-            </h1>
           </div>
 
           {/* Search Input - Centered */}
@@ -233,14 +244,14 @@ export default function SearchPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={activeTab === "shops" ? "Search shops by name..." : "Search products..."}
-                className="w-full pl-10 pr-10 py-3 bg-gray-100 border-0 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#667eea]/50 focus:bg-white transition-all"
+                className="w-full pl-10 pr-10 py-3 bg-[var(--card-bg)] border border-[var(--border-color)] shadow-sm rounded-xl text-[var(--text-dark)] placeholder-[var(--text-gray)] focus:outline-none focus:ring-2 focus:ring-[#667eea]/50 focus:border-[#667eea] transition-all"
               />
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-500/10 transition-colors"
                 >
-                  <X className="h-4 w-4 text-gray-500" />
+                  <X className="h-4 w-4 text-[var(--text-gray)]" />
                 </button>
               )}
             </div>
@@ -252,7 +263,7 @@ export default function SearchPage() {
                 <span>{locationError}</span>
               </div>
             ) : userLocation && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+              <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-gray)]">
                 <MapPin className="h-4 w-4" />
                 <span>Searching near your location</span>
               </div>
@@ -263,15 +274,15 @@ export default function SearchPage() {
 
       {/* Filters */}
       <div className="px-4 py-4">
-        {/* Tab Switcher - Centered */}
+        {/* Tab Switcher - iOS Style Pill */}
         <div className="mb-4">
-          <div className="flex bg-gray-100 rounded-xl p-1 max-w-2xl mx-auto">
+          <div className="flex bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm rounded-xl p-1 max-w-md mx-auto">
             <button
               onClick={() => handleTabChange("shops")}
               className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                 activeTab === "shops"
-                  ? "bg-white text-[#667eea] shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-[#667eea] text-white shadow-md"
+                  : "text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-gray-500/5"
               }`}
             >
               <Store className="h-4 w-4" />
@@ -281,8 +292,8 @@ export default function SearchPage() {
               onClick={() => handleTabChange("products")}
               className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                 activeTab === "products"
-                  ? "bg-white text-[#667eea] shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-[#667eea] text-white shadow-md"
+                  : "text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-gray-500/5"
               }`}
             >
               <Package className="h-4 w-4" />
@@ -294,19 +305,19 @@ export default function SearchPage() {
         {/* Radius Selector */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2 max-w-2xl">
-            <h3 className="text-sm font-medium text-gray-700">Search Radius</h3>
+            <h3 className="text-sm font-medium text-[var(--text-dark)]">Search Radius</h3>
             <span className="text-sm font-semibold text-[#667eea]">{radiusKm} km</span>
           </div>
-          <div className="flex gap-2 max-w-7xl">
+          <div className="flex gap-2 max-w-2xl mx-auto justify-center">
             {RADIUS_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setRadiusKm(option.value)}
                 className={`
-                  flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all
+                  flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all shadow-sm
                   ${radiusKm === option.value
-                    ? "bg-[#667eea] text-white shadow-sm"
-                    : "bg-white text-gray-600 border border-gray-200 hover:border-[#667eea]/50"
+                    ? "bg-[#667eea] text-white shadow-md border border-[#667eea]"
+                    : "bg-[var(--card-bg)] text-[var(--text-gray)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] hover:shadow-md"
                   }
                 `}
               >
@@ -331,7 +342,7 @@ export default function SearchPage() {
           <div className="max-w-2xl mx-auto">
             <button
               onClick={handleClearSearch}
-              className="mt-4 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+              className="mt-4 text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] transition-colors"
             >
               Clear all filters
             </button>
@@ -341,22 +352,22 @@ export default function SearchPage() {
 
       {/* Recent Searches */}
       {!hasSearched && recentSearches.length > 0 && (
-        <div className="max-w-2xl mx-auto px-4 py-4 border-t border-gray-100">
+        <div className="max-w-2xl mx-auto px-4 py-4 border-t border-gray-200/20">
           <div className="flex items-center gap-2 mb-3">
-            <History className="h-4 w-4 text-gray-400" />
-            <h3 className="text-sm font-medium text-gray-700">Recent Searches</h3>
+            <History className="h-4 w-4 text-[var(--text-gray)]" />
+            <h3 className="text-sm font-medium text-[var(--text-dark)]">Recent Searches</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {recentSearches.map((recent) => (
               <button
                 key={recent.id}
                 onClick={() => handleRecentSearchClick(recent)}
-                className="group flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:border-[#667eea]/50 transition-all"
+                className="group flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-sm text-[var(--text-gray)] hover:border-[#667eea]/50 transition-all"
               >
                 <span className="truncate max-w-[150px]">
                   {recent.query || recent.categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(", ")}
                 </span>
-                <span className="text-xs text-gray-400">({recent.radiusKm} km)</span>
+                <span className="text-xs text-[var(--text-gray)]">({recent.radiusKm} km)</span>
                 <X
                   className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
@@ -376,13 +387,13 @@ export default function SearchPage() {
         {activeTab === "shops" && loading && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-[#667eea]" />
-            <p className="mt-4 text-sm text-gray-500">Searching shops...</p>
+            <p className="mt-4 text-sm text-[var(--text-gray)]">Searching shops...</p>
           </div>
         )}
         {activeTab === "products" && productLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-[#667eea]" />
-            <p className="mt-4 text-sm text-gray-500">Searching products...</p>
+            <p className="mt-4 text-sm text-[var(--text-gray)]">Searching products...</p>
           </div>
         )}
 
@@ -410,19 +421,22 @@ export default function SearchPage() {
           </div>
         )}
 
+        {/* Section Divider */}
+        <div className="border-t-2 border-[var(--border-subtle)] my-4 max-w-2xl mx-auto" />
+
         {/* Results */}
         {activeTab === "shops" && !loading && !error && hasSearched && (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
+            <div className="flex items-center justify-between mb-4 bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm rounded-lg p-3">
+              <h2 className="text-lg font-semibold text-[var(--text-dark)]">
                 {totalCount} {totalCount === 1 ? "shop" : "shops"} found
               </h2>
             </div>
 
             {results.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">No shops found matching your criteria.</p>
-                <p className="mt-2 text-sm text-gray-400">Try expanding your radius or clearing filters.</p>
+                <p className="text-[var(--text-gray)]">No shops found matching your criteria.</p>
+                <p className="mt-2 text-sm text-[var(--text-gray)]">Try expanding your radius or clearing filters.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -448,16 +462,16 @@ export default function SearchPage() {
         {/* Product Results */}
         {activeTab === "products" && !productLoading && !productError && hasSearched && (
           <>
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 text-left">
+            <div className="mb-4 bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm rounded-lg p-3">
+              <h2 className="text-lg font-semibold text-[var(--text-dark)] text-left">
                 {productMeta?.total_count ?? 0} {productMeta?.total_count === 1 ? "product" : "products"} found
               </h2>
             </div>
 
             {productResults.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-                <p className="text-black">No products found matching your search.</p>
-                <div className="mt-4 space-y-2 text-sm text-black">
+              <div className="text-center py-12 bg-[var(--card-bg)] rounded-xl border-2 border-[var(--border-subtle)] shadow-sm">
+                <p className="text-[var(--text-dark)]">No products found matching your search.</p>
+                <div className="mt-4 space-y-2 text-sm text-[var(--text-gray)]">
                   <p>Try different keywords</p>
                   <button
                     onClick={() => setRadiusKm(radiusKm + 5)}
@@ -476,7 +490,7 @@ export default function SearchPage() {
               </div>
             ) : (
               <div className="w-full" style={{ textAlign: 'left' }}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {productResults.map((product) => (
                   <ProductCard
                     key={product.product_id}
@@ -488,10 +502,9 @@ export default function SearchPage() {
                     shop_name_mm={product.shop_name_mm}
                     image_url={product.image_url}
                     price={product.price}
-                    booking_fee={product.booking_fee}
                     currency={product.currency}
                     freshness_status={product.freshness_status}
-                    shop_rating={product.shop_rating}
+                    product_rating={product.product_rating}
                     distance_km={product.distance_km}
                   />
                 ))}
@@ -504,8 +517,8 @@ export default function SearchPage() {
         {/* Empty State */}
         {!hasSearched && (
           <div className="text-center py-12">
-            <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">
+            <Search className="h-12 w-12 text-[var(--text-gray)] mx-auto mb-4" />
+            <p className="text-[var(--text-gray)]">
               {activeTab === "shops"
                 ? "Enter a shop name or select categories to start searching"
                 : "Enter a product name to search (minimum 2 characters)"}

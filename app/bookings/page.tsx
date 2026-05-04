@@ -35,11 +35,11 @@ interface Booking {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: "Pending", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", icon: Hourglass },
-  accepted: { label: "Accepted", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", icon: CheckCircle },
-  declined: { label: "Declined", color: "text-red-600", bg: "bg-red-50", border: "border-red-200", icon: XCircle },
-  completed: { label: "Completed", color: "text-green-600", bg: "bg-green-50", border: "border-green-200", icon: CheckCircle },
-  cancelled: { label: "Cancelled", color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200", icon: XCircle },
+  pending: { label: "Pending", color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/20", icon: Hourglass },
+  accepted: { label: "Accepted", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20", icon: CheckCircle },
+  declined: { label: "Declined", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", icon: XCircle },
+  completed: { label: "Completed", color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/20", icon: CheckCircle },
+  cancelled: { label: "Cancelled", color: "text-gray-500", bg: "bg-gray-500/10", border: "border-gray-500/20", icon: XCircle },
 };
 
 export default function BookingsPage() {
@@ -86,10 +86,10 @@ export default function BookingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-10 w-10 text-[#667eea] animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading your bookings...</p>
+          <p className="text-[var(--text-gray)]">Loading your bookings...</p>
         </div>
       </div>
     );
@@ -97,21 +97,21 @@ export default function BookingsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[var(--background)]">
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => router.back()}
-                  className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                  className="p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
                 >
-                  <ArrowLeft className="h-5 w-5 text-gray-600" />
+                  <ArrowLeft className="h-5 w-5 text-[var(--text-gray)]" />
                 </button>
-                <h1 className="text-xl font-semibold text-gray-900">My Bookings</h1>
+                <h1 className="text-xl font-semibold text-[var(--text-dark)]">My Bookings</h1>
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-[var(--text-gray)]">
                 {bookings.length} total
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function BookingsPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   activeFilter === filter.key
                     ? "bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white"
-                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                    : "bg-[var(--card-bg)] text-[var(--text-dark)] border border-gray-200/20 hover:bg-gray-500/10"
                 }`}
               >
                 {filter.label} ({filter.count})
@@ -151,13 +151,13 @@ export default function BookingsPage() {
           {/* Bookings List */}
           {sortedBookings.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="h-10 w-10 text-gray-400" />
+              <div className="w-20 h-20 bg-gray-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="h-10 w-10 text-[var(--text-gray)]" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-[var(--text-dark)] mb-2">
                 {activeFilter === "all" ? "No bookings yet" : `No ${activeFilter} bookings`}
               </h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              <p className="text-[var(--text-gray)] mb-6 max-w-md mx-auto">
                 {activeFilter === "all"
                   ? "When you book products, they will appear here. Start exploring shops to find what you need!"
                   : `You don't have any ${activeFilter} bookings at the moment.`}
@@ -179,16 +179,16 @@ export default function BookingsPage() {
                   <div
                     key={booking.id}
                     onClick={() => router.push(`/booking/${booking.id}`)}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all cursor-pointer"
+                    className="bg-[var(--card-bg)] rounded-2xl shadow-sm border border-gray-200/20 p-5 hover:shadow-md transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${statusConfig.bg}`}>
-                          <Package className="h-5 w-5 text-gray-600" />
+                          <Package className="h-5 w-5 text-[var(--text-gray)]" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900">{booking.product_name}</h3>
-                          <p className="text-sm text-gray-500">{booking.shop_name}</p>
+                          <h3 className="font-semibold text-[var(--text-dark)]">{booking.product_name}</h3>
+                          <p className="text-sm text-[var(--text-gray)]">{booking.shop_name}</p>
                         </div>
                       </div>
                       <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}>
@@ -198,8 +198,8 @@ export default function BookingsPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Clock className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2 text-[var(--text-gray)]">
+                        <Clock className="h-4 w-4 text-[var(--text-gray)]" />
                         <span>
                           {new Date(booking.pickup_time).toLocaleString(undefined, {
                             month: "short",
@@ -209,8 +209,8 @@ export default function BookingsPage() {
                           })}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Store className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2 text-[var(--text-gray)]">
+                        <Store className="h-4 w-4 text-[var(--text-gray)]" />
                         <span>{booking.shop_name}</span>
                       </div>
                     </div>

@@ -22,11 +22,11 @@ function getDb() {
 // POST /api/products/[productId]/renew - Renew a product (update timestamp)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const db = getDb();
-    const { productId } = params;
+    const { productId } = await params;
 
     // Get the product document
     const productRef = doc(db, "products", productId);
@@ -39,9 +39,10 @@ export async function POST(
       );
     }
 
-    // Update the updated_at timestamp to now
+    // Update the timestamps to now
     const now = new Date().toISOString();
     await updateDoc(productRef, {
+      upload_timestamp: now, // Update this so product detail page shows correct time
       updated_at: now,
       renewed_at: now, // Track when it was specifically renewed
     });

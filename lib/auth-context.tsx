@@ -51,6 +51,7 @@ interface AuthContextType {
   sendVerificationEmail: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   clearError: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -115,6 +116,26 @@ async function createUserProfile(firebaseUser: FirebaseUser, displayName?: strin
       displayName: displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
     });
   }
+}
+
+async function getUserProfile(uid: string): Promise<Partial<User>> {
+  if (!db) return {};
+  try {
+    const userRef = doc(db, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      return {
+        displayName: data.displayName,
+        photoUrl: data.photoUrl,
+        createdAt: convertTimestampToDate(data.createdAt),
+        lastLoginAt: new Date(),
+      };
+    }
+  } catch (err) {
+    console.warn("Failed to get user profile:", err);
+  }
+  return {};
 }
 
 function convertTimestampToDate(timestamp: unknown): Date | null {
@@ -219,6 +240,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFirebaseUser(null);
   };
 
+  const refreshUser = async () => {
+    if (!firebaseUser) return;
+    await firebaseUser.reload();
+    const profileData = await getUserProfile(firebaseUser.uid);
+    setUser(mapFirebaseUserToUser(firebaseUser, profileData));
+  };
+
   const sendVerificationEmail = async () => {
     if (!auth?.currentUser) throw new Error("No user logged in");
     await sendEmailVerification(auth.currentUser);
@@ -242,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sendVerificationEmail,
     sendPasswordReset,
     clearError,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

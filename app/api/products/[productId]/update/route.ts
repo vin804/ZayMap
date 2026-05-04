@@ -24,7 +24,6 @@ interface UpdateProductRequest {
   product_name_mm?: string;
   description?: string;
   price: number;
-  booking_fee: number;
   image_urls?: string[];
 }
 
@@ -59,13 +58,6 @@ export async function PUT(
       );
     }
 
-    if (typeof body.booking_fee !== "number" || body.booking_fee < 500) {
-      return NextResponse.json(
-        { error: "Valid booking fee is required (minimum 500 MMK)" },
-        { status: 400 }
-      );
-    }
-
     const db = getDb();
 
     // Check if product exists
@@ -85,7 +77,6 @@ export async function PUT(
       product_name_mm: body.product_name_mm?.trim() || "",
       description: body.description?.trim() || "",
       price: body.price,
-      booking_fee: body.booking_fee,
       image_urls: body.image_urls || [],
       updated_at: serverTimestamp(),
     };

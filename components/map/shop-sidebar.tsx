@@ -57,7 +57,7 @@ export function ShopSidebar({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-gray-200 px-4 py-3">
+      <div className="border-b-2 border-[var(--border-subtle)] px-4 py-3 bg-[var(--card-bg)]">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dark)]">
           Nearby Shops
         </h2>
@@ -72,7 +72,7 @@ export function ShopSidebar({
             <Link
               key={shop.shopId}
               href={`/shop/${shop.shopId}`}
-              className="block rounded-lg border border-transparent p-3 transition-all hover:border-[#667eea] hover:bg-gray-50"
+              className="block rounded-lg border-2 border-[var(--border-subtle)] bg-[var(--card-bg)] shadow-sm p-3 transition-all hover:border-[#667eea] hover:shadow-md hover:bg-gray-500/5"
             >
               <div className="flex items-start gap-3">
                 {/* Business Logo */}

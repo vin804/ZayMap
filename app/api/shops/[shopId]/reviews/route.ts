@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, getDocs, query, orderBy, limit as limitDocs } from "firebase/firestore";
+import { getFirestore, collection, getDocs, query, orderBy, limit as limitDocs, addDoc } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
 
 // Initialize Firebase within the route handler for server-side reliability
@@ -120,6 +120,60 @@ export async function GET(
     console.error("Shop reviews error:", error);
     return NextResponse.json(
       { error: "Failed to fetch shop reviews" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/shops/[shopId]/reviews - Create a new shop review
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ shopId: string }> }
+) {
+  try {
+    const { shopId } = await params;
+    const body = await request.json();
+    
+    // Validation
+    if (!body.reviewer_name || !body.rating) {
+      return NextResponse.json(
+        { error: "Reviewer name and rating are required" },
+        { status: 400 }
+      );
+    }
+    
+    if (body.rating < 1 || body.rating > 5) {
+      return NextResponse.json(
+        { error: "Rating must be between 1 and 5" },
+        { status: 400 }
+      );
+    }
+
+    const db = getDb();
+    
+    // Create review document
+    const reviewData = {
+      shop_id: shopId,
+      reviewer_name: body.reviewer_name.trim(),
+      rating: body.rating,
+      comment: body.comment?.trim() || "",
+      review_type: body.review_type || "product_review",
+      created_at: new Date().toISOString(),
+    };
+    
+    const reviewsRef = collection(db, "reviews");
+    const docRef = await addDoc(reviewsRef, reviewData);
+    
+    return NextResponse.json({
+      data: {
+        review_id: docRef.id,
+        ...reviewData,
+      },
+    }, { status: 201 });
+  } catch (error) {
+    console.error("Create review error:", error);
+    return NextResponse.json(
+      { error: "Failed to create review" },
       { status: 500 }
     );
   }

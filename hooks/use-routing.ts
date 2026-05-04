@@ -48,6 +48,9 @@ export function useRouting() {
       
       if (API_KEY) {
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
           const response = await fetch(`https://api.heigit.org/routing/v2/directions/driving-car?api_key=${API_KEY}`, {
             method: 'POST',
             headers: {
@@ -61,37 +64,36 @@ export function useRouting() {
               instructions: true,
               units: 'm',
               geometry_format: 'geojson'
-            })
+            }),
+            signal: controller.signal
           });
+          
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             data = await response.json();
-            console.log("OpenRouteService API success");
-          } else {
-            console.warn("OpenRouteService API error:", response.status);
           }
         } catch (fetchError) {
-          console.warn("OpenRouteService network error:", fetchError);
+          // Silently fail - will try OSRM fallback
         }
       }
       
       // Try OSRM demo server as fallback (no API key needed)
       if (!data) {
         try {
-          console.log("Trying OSRM demo server...");
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
           const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${shopLon},${shopLat}?overview=full&geometries=geojson&steps=true`;
-          const osrmResponse = await fetch(osrmUrl);
+          const osrmResponse = await fetch(osrmUrl, { signal: controller.signal });
+          
+          clearTimeout(timeoutId);
           
           if (osrmResponse.ok) {
             const osrmData = await osrmResponse.json();
-            console.log("OSRM API success");
             // Convert OSRM format to match OpenRouteService format
             if (osrmData.routes && osrmData.routes[0]) {
               const osrmRoute = osrmData.routes[0];
-              // Debug: log first few steps to see what OSRM returns
-              const rawSteps = osrmRoute.legs[0].steps.slice(0, 3).map((s: {maneuver: object, name: string}) => ({maneuver: s.maneuver, name: s.name}));
-              console.log("OSRM raw steps:", JSON.stringify(rawSteps, null, 2));
-              console.log("Full first step:", JSON.stringify(osrmRoute.legs[0].steps[0], null, 2));
               data = {
                 routes: [{
                   geometry: osrmRoute.geometry,
@@ -156,11 +158,9 @@ export function useRouting() {
                 }]
               };
             }
-          } else {
-            console.warn("OSRM API error:", osrmResponse.status);
           }
-        } catch (osrmError) {
-          console.warn("OSRM network error:", osrmError);
+        } catch {
+          // Silently fail - will use direct line fallback
         }
       }
       
@@ -171,39 +171,20 @@ export function useRouting() {
         // Decode polyline if needed (ORS returns encoded polyline)
         let coordinates: [number, number][] = [];
         
-        console.log("Geometry type:", typeof geometry, "value:", geometry?.substring?.(0, 50) || geometry);
-        
         if (geometry) {
           if (typeof geometry === 'string') {
             // Geometry is an encoded polyline string
-            console.log("Decoding encoded polyline, length:", geometry.length);
             coordinates = decodePolyline(geometry);
           } else if (geometry.coordinates && Array.isArray(geometry.coordinates)) {
             // GeoJSON format - Convert [lng, lat] to [lat, lng] for Leaflet
-            console.log("Using GeoJSON coordinates, count:", geometry.coordinates.length);
             coordinates = geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
           }
         }
 
-        // Fallback: use waypoints from segment if no coordinates
-        if (coordinates.length === 0 && routeData.segments && routeData.segments[0]) {
-          const segment = routeData.segments[0];
-          if (segment.way_points && Array.isArray(segment.way_points)) {
-            console.log("Using way_points from segment");
-            // This would need the full geometry decoding
-          }
-        }
-
-        console.log("Final coordinates count:", coordinates.length);
-        if (coordinates.length > 0) {
-          console.log("First coordinate:", coordinates[0], "Last coordinate:", coordinates[coordinates.length - 1]);
-        }
 
         // Parse steps
         const steps: RouteStep[] = [];
         if (routeData.segments && routeData.segments[0] && routeData.segments[0].steps) {
-          console.log("First step data:", routeData.segments[0].steps[0]);
-          console.log("All step instructions:", JSON.stringify(routeData.segments[0].steps.map((s: {instruction: string, name?: string}) => ({instruction: s.instruction, name: s.name})), null, 2));
           routeData.segments[0].steps.forEach((step: {
             instruction: string;
             distance: number;
@@ -239,37 +220,33 @@ export function useRouting() {
         });
       } else {
         // Fallback to direct line when no API data
-        console.log("Using direct line fallback (no API data)");
         const directDistance = calculateDistance(userLat, userLon, shopLat, shopLon);
         const fallbackRoute: RouteData = {
           coordinates: [[userLat, userLon], [shopLat, shopLon]],
           steps: [{
-            instruction: `Head to ${shopLat.toFixed(4)}, ${shopLon.toFixed(4)}`,
+            instruction: `Head toward destination (${directDistance.toFixed(1)} km straight)`,
             distance: directDistance * 1000,
-            duration: 0,
+            duration: Math.round((directDistance / 40) * 3600), // Estimate: 40 km/h avg speed
             type: "depart"
           }],
           totalDistance: directDistance * 1000,
-          totalDuration: 0
+          totalDuration: Math.round((directDistance / 40) * 3600)
         };
-        console.log("Setting fallback route with coordinates:", fallbackRoute.coordinates);
         setRoute(fallbackRoute);
       }
-    } catch (err) {
-      console.error("Routing error:", err);
-      setError("Failed to get directions");
-      
-      // Fallback to direct line
+    } catch {
+      // Fallback to direct line on any error
+      const directDistance = calculateDistance(userLat, userLon, shopLat, shopLon);
       const directRoute: RouteData = {
         coordinates: [[userLat, userLon], [shopLat, shopLon]],
         steps: [{
-          instruction: "Direct route to destination",
-          distance: calculateDistance(userLat, userLon, shopLat, shopLon) * 1000,
-          duration: 0,
+          instruction: `Head toward destination (${directDistance.toFixed(1)} km straight)`,
+          distance: directDistance * 1000,
+          duration: Math.round((directDistance / 40) * 3600),
           type: "depart"
         }],
-        totalDistance: calculateDistance(userLat, userLon, shopLat, shopLon) * 1000,
-        totalDuration: 0
+        totalDistance: directDistance * 1000,
+        totalDuration: Math.round((directDistance / 40) * 3600)
       };
       setRoute(directRoute);
     } finally {

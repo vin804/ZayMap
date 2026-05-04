@@ -17,11 +17,21 @@ import {
   Save
 } from "lucide-react";
 
+const CATEGORIES = [
+  { value: "clothes", label: "👕 Clothes", label_mm: "👕 အဝတ်အစား" },
+  { value: "electronics", label: "📱 Electronics", label_mm: "📱 အီလက်ထရွန်နစ်" },
+  { value: "food", label: "🍜 Food", label_mm: "🍜 အစားအသောက်" },
+  { value: "cosmetics", label: "💄 Cosmetics", label_mm: "💄 အလှကုန်" },
+  { value: "second_hand", label: "♻️ Second-hand", label_mm: "♻️ ရောင်းချမှု" },
+  { value: "other", label: "🏪 Other", label_mm: "🏪 အခြား" },
+];
+
 interface ProductFormData {
   name: string;
   name_mm: string;
   description: string;
   price: number;
+  category: string;
   images: File[];
   existingImages: string[];
 }
@@ -44,6 +54,7 @@ export default function EditProductPage() {
     name_mm: "",
     description: "",
     price: 0,
+    category: "other",
     images: [],
     existingImages: [],
   });
@@ -92,6 +103,7 @@ export default function EditProductPage() {
             name_mm: product.name_mm || "",
             description: product.description || "",
             price: product.price || 0,
+            category: product.category || "other",
             images: [],
             existingImages: product.image_urls || [],
           });
@@ -208,6 +220,7 @@ export default function EditProductPage() {
           product_name_mm: formData.name_mm,
           description: formData.description,
           price: formData.price,
+          category: formData.category,
           image_urls: allImages,
         }),
       });
@@ -360,6 +373,24 @@ export default function EditProductPage() {
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">MMK</span>
               </div>
               <p className="text-sm text-gray-500 mt-1">Actual price of the product</p>
+            </div>
+
+            {/* Category */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900 bg-white"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Images */}

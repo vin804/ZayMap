@@ -41,7 +41,7 @@ export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
       <button
         onClick={handleGoogleSignIn}
         disabled={loading !== null}
-        className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:flex-row"
+        className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200/20 bg-[var(--card-bg)] px-4 py-3 text-sm font-medium text-[var(--text-dark)] transition-colors hover:bg-gray-500/10 disabled:opacity-50 sm:flex-row"
       >
         {loading === "google" ? (
           <Loader2 className="h-5 w-5 animate-spin" />

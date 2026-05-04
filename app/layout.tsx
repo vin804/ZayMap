@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "@/lib/theme-context";
 import { BookingNotificationContainer } from "@/components/booking-notification";
 
 const poppins = Poppins({
@@ -25,11 +26,13 @@ export default function RootLayout({
       lang="en"
       className={`${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
-        <AuthProvider>
-          {children}
-          <BookingNotificationContainer />
-        </AuthProvider>
+      <body className="min-h-full flex flex-col font-sans transition-colors duration-300">
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+            <BookingNotificationContainer />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

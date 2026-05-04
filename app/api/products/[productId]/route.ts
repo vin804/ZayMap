@@ -41,6 +41,7 @@ interface Product {
     phone?: string;
     address?: string;
     delivery_available: boolean;
+    logo_url?: string;
   };
   reviews: Review[];
   reviews_count: number;
@@ -61,8 +62,11 @@ function calculateFreshness(createdAt: string): "green" | "orange" | "red" {
   const now = new Date();
   const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
   
-  if (hoursDiff < 24) return "green";
-  if (hoursDiff < 72) return "orange"; // 3 days
+  // Fresh: less than 2 days (48 hours)
+  if (hoursDiff < 48) return "green";
+  // Recent: 2-10 days (48-240 hours)
+  if (hoursDiff < 240) return "orange";
+  // Old: more than 10 days
   return "red";
 }
 
@@ -88,9 +92,9 @@ export async function GET(
     }
 
     const productData = productSnap.data();
-    const shopId = productData.shop_id;
+    const shopId = productData.shop_id || productData.shopId;
 
-    // Fetch shop details
+    // Fetch shop data if shop_id is available
     let shopData = null;
     if (shopId) {
       const shopRef = doc(db, "shops", shopId);
@@ -98,6 +102,27 @@ export async function GET(
       if (shopSnap.exists()) {
         shopData = shopSnap.data();
       }
+    }
+
+    // Calculate shop rating from reviews (if shop_id available)
+    let shopRating = shopData?.rating || 0;
+    if (shopId) {
+      const shopReviewsRef = collection(db, "reviews");
+      const shopReviewsQuery = query(shopReviewsRef, where("shop_id", "==", shopId));
+      const shopReviewsSnap = await getDocs(shopReviewsQuery);
+      
+      let totalShopRating = 0;
+      let shopReviewCount = 0;
+      shopReviewsSnap.forEach((reviewDoc) => {
+        const reviewData = reviewDoc.data();
+        if (reviewData.rating) {
+          totalShopRating += reviewData.rating;
+          shopReviewCount++;
+        }
+      });
+      
+      const calculatedShopRating = shopReviewCount > 0 ? totalShopRating / shopReviewCount : 0;
+      shopRating = calculatedShopRating || shopData?.rating || 0;
     }
 
     // Fetch reviews for this product (simplified query to avoid index requirements)
@@ -113,12 +138,23 @@ export async function GET(
     
     reviewsSnap.forEach((doc) => {
       const data = doc.data();
+      // Handle Firestore Timestamp or string
+      let createdAt: string;
+      if (data.created_at && typeof data.created_at === 'object' && 'toDate' in data.created_at) {
+        // Firestore Timestamp object
+        createdAt = data.created_at.toDate().toISOString();
+      } else if (data.created_at) {
+        createdAt = data.created_at;
+      } else {
+        createdAt = new Date().toISOString();
+      }
+      
       const review: Review = {
         id: doc.id,
         reviewer_name: data.reviewer_name || "Anonymous",
         rating: data.rating || 0,
         review_text: data.review_text || data.comment || "",
-        created_at: data.created_at || new Date().toISOString(),
+        created_at: createdAt,
       };
       reviews.push(review);
       totalRating += review.rating;
@@ -159,10 +195,13 @@ export async function GET(
         id: shopId || "",
         name: shopData?.name || productData.shop_name || "Unknown Shop",
         name_mm: shopData?.name_mm || productData.shop_name_mm,
-        rating: shopData?.rating || productData.shop_rating || 0,
+        rating: shopRating,
         phone: shopData?.phone,
         address: shopData?.address,
         delivery_available: shopData?.delivery_available || false,
+        logo_url: shopData?.logo_url,
+        latitude: shopData?.location?.latitude || shopData?.latitude || 0,
+        longitude: shopData?.location?.longitude || shopData?.longitude || 0,
       },
       reviews,
       reviews_count: reviews.length,

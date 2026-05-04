@@ -122,6 +122,23 @@ export async function POST(request: NextRequest) {
     const snapshot = await getDocs(shopsQuery);
     console.log(`[Search API] Fetched ${snapshot.size} shops from Firestore`);
     
+    // Fetch all reviews to calculate ratings
+    const reviewsRef = collection(db, "reviews");
+    const reviewsSnap = await getDocs(reviewsRef);
+    
+    // Group reviews by shop_id and calculate ratings
+    const shopRatings: Record<string, { totalRating: number; count: number }> = {};
+    reviewsSnap.forEach((reviewDoc) => {
+      const reviewData = reviewDoc.data();
+      if (reviewData.shop_id && reviewData.rating) {
+        if (!shopRatings[reviewData.shop_id]) {
+          shopRatings[reviewData.shop_id] = { totalRating: 0, count: 0 };
+        }
+        shopRatings[reviewData.shop_id].totalRating += reviewData.rating;
+        shopRatings[reviewData.shop_id].count++;
+      }
+    });
+    
     let shops: Shop[] = [];
 
     snapshot.forEach((doc) => {
@@ -136,6 +153,14 @@ export async function POST(request: NextRequest) {
         console.warn(`[Search API] Shop ${doc.id} has invalid coordinates: ${latitude}, ${longitude}`);
       }
       
+      // Calculate rating from reviews
+      const shopRating = shopRatings[doc.id];
+      const calculatedRating = shopRating && shopRating.count > 0 
+        ? shopRating.totalRating / shopRating.count 
+        : 0;
+      const rating = calculatedRating || data.rating || 0;
+      const reviewCount = shopRating?.count || data.review_count || 0;
+      
       shops.push({
         shop_id: doc.id,
         name: data.name || "",
@@ -143,8 +168,8 @@ export async function POST(request: NextRequest) {
         category: data.category || "",
         latitude,
         longitude,
-        rating: data.rating || 0,
-        review_count: data.review_count || 0,
+        rating,
+        review_count: reviewCount,
         response_speed_score: data.response_speed_score || 0,
         delivery_available: data.delivery_available || false,
         logo_url: data.logo_url || "",

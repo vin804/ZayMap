@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f3f4f6;
   --foreground: #171717;
   --card-bg: #ffffff;
   --card-radius: 12px;
@@ -9,6 +9,11 @@
   --text-gray: #6b7280;
   --gradient-primary-from: #667eea;
   --gradient-primary-to: #764ba2;
+  --border-color: #9ca3af;
+  --border-subtle: #d1d5db;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 @theme inline {
@@ -20,20 +25,36 @@
   --color-text-gray: var(--text-gray);
   --color-gradient-from: var(--gradient-primary-from);
   --color-gradient-to: var(--gradient-primary-to);
+  --color-border-color: var(--border-color);
+  --color-border-subtle: var(--border-subtle);
   --font-sans: var(--font-poppins);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0f0f1a;
+  --foreground: #e4e4e7;
+  --card-bg: #1a1a2e;
+  --card-radius: 12px;
+  --text-dark: #f3f4f6;
+  --text-gray: #a1a1aa;
+  --gradient-primary-from: #667eea;
+  --gradient-primary-to: #764ba2;
+  --border-color: rgba(156, 163, 175, 0.3);
+  --border-subtle: rgba(156, 163, 175, 0.2);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Smooth transitions for all themed elements */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
 }
 
 /* Gradient text utility */

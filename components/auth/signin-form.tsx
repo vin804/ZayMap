@@ -53,7 +53,7 @@ export function SignInForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -70,7 +70,7 @@ export function SignInForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--gradient-primary-from)] focus:outline-none focus:ring-1 focus:ring-[var(--gradient-primary-from)]"
+          className="w-full rounded-lg border border-gray-200/20 bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:border-[var(--gradient-primary-from)] focus:outline-none focus:ring-1 focus:ring-[var(--gradient-primary-from)]"
           placeholder="Enter your email"
           required
         />
@@ -88,7 +88,7 @@ export function SignInForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--gradient-primary-from)] focus:outline-none focus:ring-1 focus:ring-[var(--gradient-primary-from)]"
+          className="w-full rounded-lg border border-gray-200/20 bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:border-[var(--gradient-primary-from)] focus:outline-none focus:ring-1 focus:ring-[var(--gradient-primary-from)]"
           placeholder="Enter your password"
           required
         />
@@ -100,7 +100,7 @@ export function SignInForm() {
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
+            className="h-4 w-4 rounded border-gray-500/30 bg-[var(--card-bg)] text-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
           />
           <span className="text-sm text-[var(--text-gray)]">Remember me</span>
         </label>

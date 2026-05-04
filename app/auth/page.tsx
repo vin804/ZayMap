@@ -14,18 +14,18 @@ export default function AuthPage() {
   const firebaseNotConfigured = !isFirebaseConfigured;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4">
-      <div className="card w-full max-w-[520px]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] p-4">
+      <div className="card w-full max-w-[600px] p-8">
         {/* Configuration Error Banner */}
         {firebaseNotConfigured && (
-          <div className="mb-6 rounded-lg bg-amber-50 p-4">
+          <div className="mb-6 rounded-lg bg-amber-500/10 border border-amber-500/20 p-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
               <div>
-                <h3 className="font-semibold text-amber-800">Firebase Not Configured</h3>
-                <p className="mt-1 text-sm text-amber-700">
+                <h3 className="font-semibold text-amber-500">Firebase Not Configured</h3>
+                <p className="mt-1 text-sm text-amber-400">
                   Authentication is not available. Please add your Firebase credentials to{" "}
-                  <code className="rounded bg-amber-100 px-1">.env.local</code>
+                  <code className="rounded bg-amber-500/20 px-1">.env.local</code>
                 </p>
               </div>
             </div>
@@ -33,7 +33,7 @@ export default function AuthPage() {
         )}
 
         {/* Tab Navigation */}
-        <div className="mb-6 flex border-b border-gray-200">
+        <div className="mb-6 flex border-b border-gray-200/20">
           <button
             onClick={() => setActiveTab("signin")}
             className={`flex-1 pb-3 text-center text-sm font-medium transition-colors ${
@@ -64,10 +64,10 @@ export default function AuthPage() {
         {/* Divider */}
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200" />
+            <div className="w-full border-t border-gray-200/20" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-[var(--text-gray)]">OR</span>
+            <span className="bg-[var(--card-bg)] px-3 text-[var(--text-gray)]">OR</span>
           </div>
         </div>
 

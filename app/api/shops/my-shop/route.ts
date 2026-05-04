@@ -49,6 +49,26 @@ export async function GET(request: NextRequest) {
     // Get the first (and should be only) shop
     const shopDoc = snapshot.docs[0];
     const shopData = shopDoc.data();
+    const shopId = shopDoc.id;
+
+    // Calculate rating from actual reviews (like public shop API)
+    const reviewsRef = collection(db, "reviews");
+    const shopReviewsQuery = query(reviewsRef, where("shop_id", "==", shopId));
+    const reviewsSnap = await getDocs(shopReviewsQuery);
+    
+    let totalRating = 0;
+    let reviewCount = 0;
+    reviewsSnap.forEach((reviewDoc) => {
+      const reviewData = reviewDoc.data();
+      if (reviewData.rating) {
+        totalRating += reviewData.rating;
+        reviewCount++;
+      }
+    });
+    
+    const calculatedRating = reviewCount > 0 ? totalRating / reviewCount : 0;
+    const avgRating = calculatedRating || shopData.rating || 0;
+    const totalReviewCount = reviewCount || shopData.review_count || 0;
 
     return NextResponse.json({
       data: {
@@ -61,9 +81,13 @@ export async function GET(request: NextRequest) {
         facebook: shopData.facebook || "",
         tiktok: shopData.tiktok || "",
         logo_url: shopData.logo_url || "",
+        image_urls: shopData.image_urls || [],
+        description: shopData.description || "",
+        description_mm: shopData.description_mm || "",
         delivery_available: shopData.delivery_available || false,
-        rating: shopData.rating || 0,
-        review_count: shopData.review_count || 0,
+        rating: avgRating,
+        review_count: totalReviewCount,
+        categories: shopData.categories || [],
         latitude: shopData.location?.latitude || 0,
         longitude: shopData.location?.longitude || 0,
         created_at: shopData.created_at?.toDate?.() 

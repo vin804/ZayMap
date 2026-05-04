@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
 import { MapComponent } from "@/components/map/map-component";
@@ -12,8 +12,10 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 import { useShopsNearby, Shop } from "@/hooks/use-shops-nearby";
 import { useShopSearch, SearchShop } from "@/hooks/use-shop-search";
 import { useRouting, RouteStep } from "@/hooks/use-routing";
-import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2 } from "lucide-react";
+import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, Sun, Moon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useTheme } from "@/lib/theme-context";
 
 // Main map page component wrapped with Suspense
 export default function MapPage() {
@@ -33,6 +35,7 @@ export default function MapPage() {
 
 function MapPageContent() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Initialize radius from URL params or default to 5
@@ -43,29 +46,53 @@ function MapPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasShop, setHasShop] = useState(false);
+  const [isCheckingShop, setIsCheckingShop] = useState(true);
   const [shopId, setShopId] = useState<string | null>(null);
   const [highlightedShopId, setHighlightedShopId] = useState<string | undefined>(undefined);
   const [initialCenter, setInitialCenter] = useState<{lat: number; lng: number} | undefined>(undefined);
   const [showDirectionsPanel, setShowDirectionsPanel] = useState(false);
   const [directionsShop, setDirectionsShop] = useState<Shop | null>(null);
+  const [flyToUserLocation, setFlyToUserLocation] = useState(false);
+  // Load mapType from localStorage on mount, default to 'street'
+  const [mapType, setMapType] = useState<'street' | 'satellite'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('zaymap_map_type');
+      return saved === 'satellite' ? 'satellite' : 'street';
+    }
+    return 'street';
+  });
+  const hasAutoTriggeredRef = useRef(false);
   
+  // Save mapType to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('zaymap_map_type', mapType);
+    }
+  }, [mapType]);
+
   // Routing hook
   const { route, loading: routeLoading, getRoute, clearRoute } = useRouting();
 
   // Check if user has a shop and get shop ID
   useEffect(() => {
     const checkUserShop = async () => {
-      if (!user?.uid) return;
+      if (!user?.uid) {
+        setIsCheckingShop(false);
+        return;
+      }
       try {
         const response = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
         if (response.ok) {
           const data = await response.json();
-          setHasShop(true);
-          setShopId(data.data?.shop_id || null);
+          if (data.data) {
+            setHasShop(true);
+            setShopId(data.data.shop_id);
+          }
         }
-      } catch {
-        setHasShop(false);
-        setShopId(null);
+      } catch (error) {
+        console.error("Error checking shop:", error);
+      } finally {
+        setIsCheckingShop(false);
       }
     };
     checkUserShop();
@@ -151,7 +178,30 @@ function MapPageContent() {
     setShowDirectionsPanel(false);
     setDirectionsShop(null);
     clearRoute();
-  }, [clearRoute]);
+    
+    // Remove shop param from URL so it doesn't re-trigger on refresh
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.has("shop")) {
+      params.delete("shop");
+      const newUrl = params.toString() ? `/map?${params.toString()}` : "/map";
+      router.push(newUrl, { scroll: false });
+    }
+    
+    // Reset the auto-trigger ref so it can work again for other shops
+    hasAutoTriggeredRef.current = false;
+  }, [clearRoute, searchParams, router]);
+
+  // Auto-trigger directions when shop param is present and shops are loaded
+  useEffect(() => {
+    const shopId = searchParams.get("shop");
+    if (shopId && nearbyShops.length > 0 && userLat && userLon && !hasAutoTriggeredRef.current) {
+      const targetShop = nearbyShops.find(s => s.shopId === shopId);
+      if (targetShop) {
+        hasAutoTriggeredRef.current = true;
+        handleGetDirections(targetShop);
+      }
+    }
+  }, [searchParams, nearbyShops, userLat, userLon, handleGetDirections]);
 
   const displayedShops = searchQuery.trim()
     ? searchResults
@@ -178,9 +228,9 @@ function MapPageContent() {
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen flex-col bg-zinc-50">
+      <div className="flex h-screen flex-col bg-[var(--background)]">
         {/* Header */}
-        <header className="z-20 bg-white shadow-sm">
+        <header className="sticky top-0 z-50 bg-[var(--card-bg)] border-b border-gray-200/20 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               {/* Mobile menu button */}
@@ -198,27 +248,82 @@ function MapPageContent() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* My Shop Button - for shop owners */}
+              {/* Theme Toggle Button */}
               <button
-                onClick={() => router.push("/shop/dashboard")}
-                className="hidden sm:flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white px-4 py-2 text-sm font-medium hover:shadow-md transition-all relative"
-                title="My Shop"
+                onClick={toggleTheme}
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
-                <Store className="h-4 w-4" />
-                <span>My Shop</span>
+                {theme === "dark" ? (
+                  <Sun className="h-5 w-5 text-amber-500" />
+                ) : (
+                  <Moon className="h-5 w-5 text-[#667eea]" />
+                )}
               </button>
 
-              {/* Mobile My Shop Button */}
+              {/* Saved Products Button */}
               <button
-                onClick={() => router.push("/shop/dashboard")}
-                className="flex sm:hidden items-center gap-1 rounded-lg bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white px-3 py-2 text-sm font-medium relative"
-                title="My Shop"
+                onClick={() => router.push("/saved")}
+                className="hidden sm:flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                title="Saved Products"
               >
-                <Store className="h-4 w-4" />
+                <Heart className="h-4 w-4 text-[#667eea]" />
+                <span>Saved</span>
               </button>
+
+              {/* Mobile Saved Button */}
+              <button
+                onClick={() => router.push("/saved")}
+                className="flex sm:hidden items-center gap-1 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)]"
+                title="Saved Products"
+              >
+                <Heart className="h-4 w-4 text-[#667eea]" />
+              </button>
+
+              {/* Followed Shops Button */}
+              <button
+                onClick={() => router.push("/followed-shops")}
+                className="hidden sm:flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                title="Followed Shops"
+              >
+                <Star className="h-4 w-4 text-[#667eea]" />
+                <span>Following</span>
+              </button>
+
+              {/* Mobile Followed Shops Button */}
+              <button
+                onClick={() => router.push("/followed-shops")}
+                className="flex sm:hidden items-center gap-1 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)]"
+                title="Followed Shops"
+              >
+                <Star className="h-4 w-4 text-[#667eea]" />
+              </button>
+
+              {/* My Shop Button - only show if user has a shop and check complete */}
+              {!isCheckingShop && hasShop && (
+                <button
+                  onClick={() => router.push("/shop/dashboard")}
+                  className="hidden sm:flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
+                  title="My Shop Dashboard"
+                >
+                  <Store className="h-4 w-4" />
+                  <span>My Shop</span>
+                </button>
+              )}
+
+              {/* Mobile My Shop Button - only show if user has a shop and check complete */}
+              {!isCheckingShop && hasShop && (
+                <button
+                  onClick={() => router.push("/shop/dashboard")}
+                  className="flex sm:hidden items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
+                  title="My Shop Dashboard"
+                >
+                  <Store className="h-4 w-4" />
+                </button>
+              )}
               
-              {/* Register Shop Button - only show if user doesn't have a shop */}
-              {!hasShop && (
+              {/* Register Shop Button - only show if user doesn't have a shop and check complete */}
+              {!isCheckingShop && !hasShop && (
                 <button
                   onClick={() => router.push("/onboarding/shop-registration")}
                   className="hidden sm:flex items-center gap-2 rounded-lg border-2 border-[#667eea] text-[#667eea] px-4 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
@@ -228,8 +333,8 @@ function MapPageContent() {
                 </button>
               )}
               
-              {/* Mobile Register Shop Button - only show if user doesn't have a shop */}
-              {!hasShop && (
+              {/* Mobile Register Shop Button - only show if user doesn't have a shop and check complete */}
+              {!isCheckingShop && !hasShop && (
                 <button
                   onClick={() => router.push("/onboarding/shop-registration")}
                   className="flex sm:hidden items-center gap-1 rounded-lg border-2 border-[#667eea] text-[#667eea] px-3 py-2 text-sm font-medium hover:bg-[#667eea] hover:text-white"
@@ -238,24 +343,30 @@ function MapPageContent() {
                 </button>
               )}
               
-              <RadiusControl 
-                radius={radius} 
-                max={1800}
-                onChange={(newRadius) => {
-                  setRadiusState(newRadius);
-                  // Update URL params without reloading
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set("radius", newRadius.toString());
-                  router.replace(`/map?${params.toString()}`, { scroll: false });
-                }} 
-              />
-              <div className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex">
+              {/* Radius Control */}
+              <div className="hidden sm:flex">
+                <RadiusControl
+                  radius={radius}
+                  onChange={(newRadius) => {
+                    setRadiusState(newRadius);
+                    // Update URL with new radius
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("radius", newRadius.toString());
+                    router.push(`/map?${params.toString()}`, { scroll: false });
+                  }}
+                />
+              </div>
+              <Link
+                href="/profile"
+                className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex hover:text-[#667eea] transition-colors cursor-pointer"
+              >
                 <User className="h-4 w-4" />
                 <span className="max-w-[100px] truncate">{user?.displayName}</span>
-              </div>
+              </Link>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
+                title="Logout"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -268,7 +379,7 @@ function MapPageContent() {
         <div className="relative flex flex-1 overflow-hidden">
           {/* Sidebar - Desktop always visible, Mobile toggle */}
           <aside
-            className={`absolute left-0 top-0 z-10 h-full w-[280px] bg-white shadow-lg transition-transform duration-300 lg:relative lg:translate-x-0 ${
+            className={`absolute left-0 top-0 z-10 h-full w-[280px] bg-[var(--card-bg)] shadow-lg transition-transform duration-300 lg:relative lg:translate-x-0 ${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -317,6 +428,8 @@ function MapPageContent() {
             <MapComponent
               userLat={effectiveUserLat}
               userLon={effectiveUserLon}
+              actualUserLat={userLat}
+              actualUserLon={userLon}
               userLocationLoading={locationLoading}
               userLocationError={locationError}
               shops={displayedShops}
@@ -328,8 +441,85 @@ function MapPageContent() {
               initialCenter={initialCenter}
               radius={radius}
               route={route}
+              flyToUserLocation={flyToUserLocation}
+              onFlyComplete={() => setFlyToUserLocation(false)}
+              mapType={mapType}
             />
+
           </main>
+
+          {/* Map Type Switcher Button */}
+          <button
+            onClick={() => setMapType(mapType === 'street' ? 'satellite' : 'street')}
+            className="absolute bottom-36 right-4 z-[9998] bg-[var(--card-bg)] border border-gray-200/20 rounded-xl shadow-lg p-3 hover:bg-gray-500/10 transition-colors"
+            title={mapType === 'street' ? 'Switch to satellite view' : 'Switch to street view'}
+          >
+            <div className="w-8 h-8 bg-gray-500/10 rounded-full flex items-center justify-center">
+              <Layers className="h-5 w-5 text-[var(--text-gray)]" />
+            </div>
+            <span className="text-xs text-[var(--text-gray)] mt-1 block">
+              {mapType === 'street' ? 'Satellite' : 'Street'}
+            </span>
+          </button>
+
+          {/* Locate Me Button */}
+          <button
+            onClick={() => {
+              setHighlightedShopId(undefined);  // Clear shop highlight to prevent centering override
+              setInitialCenter(undefined);      // Also clear initial center from URL params
+              setFlyToUserLocation(true);       // Then fly to user's actual GPS location
+            }}
+            className="absolute bottom-20 right-4 z-[9998] bg-[var(--card-bg)] border border-gray-200/20 rounded-xl shadow-lg p-3 hover:bg-gray-500/10 transition-colors"
+            title="Go to my location"
+          >
+            <div className="w-8 h-8 bg-[#667eea] rounded-full flex items-center justify-center">
+              <Crosshair className="h-5 w-5 text-white" />
+            </div>
+          </button>
+
+          {/* Directions Panel - Outside main to appear above map */}
+          {showDirectionsPanel && route && (
+            <div className="absolute right-4 top-20 z-[9999] w-80 bg-[var(--card-bg)] border border-gray-200/20 rounded-xl shadow-xl p-4 max-h-[70vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200/20">
+                <h3 className="font-semibold text-[var(--text-dark)]">Directions</h3>
+                <button 
+                  onClick={handleCloseDirections}
+                  className="p-1 hover:bg-gray-500/10 rounded-full"
+                >
+                  <X className="h-5 w-5 text-[var(--text-gray)]" />
+                </button>
+              </div>
+              
+              {/* Route Summary */}
+              <div className="bg-[#667eea]/10 rounded-lg p-3 mb-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-[#667eea]">
+                    {directionsShop?.name}
+                  </span>
+                  <span className="text-[var(--text-gray)]">
+                    {routeLoading ? "Calculating..." : `${(route.totalDistance / 1000).toFixed(1)} km • ${Math.round(route.totalDuration / 60)} min`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Turn-by-turn Steps */}
+              <div className="space-y-3">
+                {route.steps?.map((step, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-gray-500/10 rounded-full flex items-center justify-center text-xs font-medium text-[var(--text-gray)] shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-[var(--text-dark)]">{step.instruction}</p>
+                      <p className="text-xs text-[var(--text-gray)] mt-0.5">
+                        {(step.distance / 1000).toFixed(2)} km • {Math.round(step.duration / 60)} min
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </ProtectedRoute>

@@ -25,8 +25,8 @@ interface CreateProductRequest {
   product_name_mm?: string;
   description?: string;
   price: number;
-  booking_fee: number;
   image_urls: string[];
+  category_id?: string;
 }
 
 // POST /api/products/create - Create a new product
@@ -58,13 +58,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.booking_fee || body.booking_fee < 500) {
-      return NextResponse.json(
-        { error: "Booking fee is required and must be at least 500 MMK" },
-        { status: 400 }
-      );
-    }
-
     // Calculate freshness based on upload time (now)
     const now = new Date();
     const uploadTimestamp = now.toISOString(); // Use ISO string instead of Firestore Timestamp
@@ -73,19 +66,23 @@ export async function POST(request: NextRequest) {
     const freshnessStatus = "green"; // New products are always fresh
 
     // Create product document
-    const productData = {
+    const productData: Record<string, unknown> = {
       shop_id: body.shop_id,
       product_name: body.product_name.trim(),
       product_name_mm: body.product_name_mm?.trim() || "",
       description: body.description?.trim() || "",
       price: body.price,
-      booking_fee: body.booking_fee,
       image_urls: body.image_urls || [],
       freshness_status: freshnessStatus,
       upload_timestamp: uploadTimestamp, // Use upload_timestamp consistently
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     };
+    
+    // Only add category_id if provided
+    if (body.category_id) {
+      productData.category_id = body.category_id;
+    }
 
     const productsRef = collection(db, "products");
     const docRef = await addDoc(productsRef, productData);

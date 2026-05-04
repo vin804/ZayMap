@@ -28,6 +28,10 @@ interface UpdateShopRequest {
   tiktok?: string;
   category: string;
   delivery_available: boolean;
+  description?: string;
+  description_mm?: string;
+  logo_url?: string;
+  image_urls?: string[];
 }
 
 // PUT /api/shops/[shopId]/update - Update shop details
@@ -72,7 +76,7 @@ export async function PUT(
 
     // Update shop document
     const shopRef = doc(db, "shops", shopId);
-    const updateData = {
+    const updateData: Record<string, unknown> = {
       name: body.name.trim(),
       name_mm: body.name_mm?.trim() || "",
       phone: body.phone.trim(),
@@ -81,8 +85,20 @@ export async function PUT(
       tiktok: body.tiktok?.trim() || "",
       category: body.category,
       delivery_available: body.delivery_available,
+      description: body.description?.trim() || "",
+      description_mm: body.description_mm?.trim() || "",
       updated_at: serverTimestamp(),
     };
+    
+    // Only update logo_url if provided
+    if (body.logo_url !== undefined) {
+      updateData.logo_url = body.logo_url;
+    }
+    
+    // Only update image_urls if provided
+    if (body.image_urls !== undefined) {
+      updateData.image_urls = body.image_urls;
+    }
 
     await updateDoc(shopRef, updateData);
 

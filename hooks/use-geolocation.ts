@@ -80,9 +80,9 @@ export function useGeolocation() {
         }));
       },
       {
-        enableHighAccuracy: false, // Less frequent updates for better performance
-        timeout: 10000,
-        maximumAge: 30000, // 30 seconds cache - update only when significant movement
+        enableHighAccuracy: true, // Use GPS/WiFi for accurate location (not IP address)
+        timeout: 15000,
+        maximumAge: 10000, // 10 seconds cache for fresher data
       }
     );
   }, []);
@@ -102,12 +102,25 @@ export function useGeolocation() {
     startWatching();
   }, [startWatching]);
 
+  // Manually set location (for testing or when GPS is inaccurate)
+  const setLocation = useCallback((lat: number, lng: number) => {
+    setState((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      accuracy: 0,
+      loading: false,
+      error: null,
+    }));
+  }, []);
+
   return {
     ...state,
     isYangonDefault:
       state.latitude === (YANGON_COORDINATES as [number, number])[0] &&
       state.longitude === (YANGON_COORDINATES as [number, number])[1],
     retry,
+    setLocation,
   };
 }
 

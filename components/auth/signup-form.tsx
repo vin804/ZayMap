@@ -89,7 +89,7 @@ export function SignUpForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -109,16 +109,16 @@ export function SignUpForm() {
             setEmail(e.target.value);
             if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: undefined });
           }}
-          className={`w-full rounded-lg border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 ${
+          className={`w-full rounded-lg border bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:outline-none focus:ring-1 ${
             fieldErrors.email
-              ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-              : "border-gray-300 focus:border-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
+              ? "border-red-500/50 focus:border-red-500 focus:ring-red-500"
+              : "border-gray-200/20 focus:border-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
           }`}
           placeholder="Enter your email"
           required
         />
         {fieldErrors.email && (
-          <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+          <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>
         )}
       </div>
 
@@ -137,16 +137,16 @@ export function SignUpForm() {
             setPassword(e.target.value);
             if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: undefined });
           }}
-          className={`w-full rounded-lg border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 ${
+          className={`w-full rounded-lg border bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:outline-none focus:ring-1 ${
             fieldErrors.password
-              ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-              : "border-gray-300 focus:border-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
+              ? "border-red-500/50 focus:border-red-500 focus:ring-red-500"
+              : "border-gray-200/20 focus:border-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
           }`}
           placeholder="Create a password"
           required
         />
         {fieldErrors.password && (
-          <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+          <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>
         )}
       </div>
 
@@ -165,16 +165,16 @@ export function SignUpForm() {
             setConfirmPassword(e.target.value);
             if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
           }}
-          className={`w-full rounded-lg border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 ${
+          className={`w-full rounded-lg border bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:outline-none focus:ring-1 ${
             fieldErrors.confirmPassword
-              ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-              : "border-gray-300 focus:border-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
+              ? "border-red-500/50 focus:border-red-500 focus:ring-red-500"
+              : "border-gray-200/20 focus:border-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
           }`}
           placeholder="Confirm your password"
           required
         />
         {fieldErrors.confirmPassword && (
-          <p className="mt-1 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
+          <p className="mt-1 text-xs text-red-500">{fieldErrors.confirmPassword}</p>
         )}
       </div>
 

@@ -30,7 +30,10 @@ interface Product {
   booking_fee: number;
   currency: string;
   upload_timestamp: string;
+  updated_at?: string;
   freshness_badge: "green" | "orange" | "red";
+  average_rating: number;
+  review_count: number;
 }
 
 // Calculate freshness badge based on upload timestamp
@@ -39,8 +42,11 @@ function calculateFreshness(uploadTimestamp: string): "green" | "orange" | "red"
   const now = new Date();
   const hoursDiff = (now.getTime() - upload.getTime()) / (1000 * 60 * 60);
   
-  if (hoursDiff < 24) return "green";
-  if (hoursDiff < 72) return "orange"; // 3 days
+  // Fresh: less than 2 days (48 hours)
+  if (hoursDiff < 48) return "green";
+  // Recent: 2-10 days (48-240 hours)
+  if (hoursDiff < 240) return "orange";
+  // Old: more than 10 days
   return "red";
 }
 
@@ -68,8 +74,28 @@ export async function GET(
     const productsSnap = await getDocs(productsQuery);
     const products: Product[] = [];
 
-    productsSnap.forEach((doc) => {
+    // Fetch reviews for each product to calculate ratings
+    const reviewsRef = collection(db, "reviews");
+
+    for (const doc of productsSnap.docs) {
       const data = doc.data();
+      
+      // Get reviews for this product
+      const productReviewsQuery = query(
+        reviewsRef,
+        where("product_id", "==", doc.id)
+      );
+      const reviewsSnap = await getDocs(productReviewsQuery);
+      const reviews: number[] = [];
+      reviewsSnap.forEach((reviewDoc) => {
+        const reviewData = reviewDoc.data();
+        if (reviewData.rating) reviews.push(reviewData.rating);
+      });
+      
+      const average_rating = reviews.length > 0 
+        ? reviews.reduce((sum, r) => sum + r, 0) / reviews.length 
+        : 0;
+      
       const product: Product = {
         product_id: doc.id,
         shop_id: data.shop_id || shopId,
@@ -80,11 +106,15 @@ export async function GET(
         price: data.price || 0,
         booking_fee: data.booking_fee || 0,
         currency: data.currency || "MMK",
+        category_id: data.category_id || null,
         upload_timestamp: data.upload_timestamp || data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at,
         freshness_badge: calculateFreshness(data.upload_timestamp || data.created_at || new Date().toISOString()),
+        average_rating,
+        review_count: reviews.length,
       };
       products.push(product);
-    });
+    }
 
     // Sort by upload timestamp desc (newest first)
     products.sort((a, b) => new Date(b.upload_timestamp).getTime() - new Date(a.upload_timestamp).getTime());

@@ -11,11 +11,11 @@ export interface ProductResult {
   shop_name_mm?: string;
   image_url?: string;
   price: number;
-  booking_fee: number;
   currency: string;
   freshness_status: "green" | "orange" | "red";
   uploaded_at: string;
   shop_rating: number;
+  product_rating: number;
   distance_km: number;
 }
 
@@ -32,6 +32,8 @@ interface ProductSearchRequest {
   longitude: number;
   radius_km: number;
   language?: "en" | "my";
+  limit?: number;
+  offset?: number;
 }
 
 export function useProductSearch() {

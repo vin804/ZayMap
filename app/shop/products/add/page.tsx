@@ -7,11 +7,20 @@ import { uploadImages } from "@/lib/upload";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Loader2, Package, ArrowLeft, Upload, CheckCircle, AlertCircle, DollarSign, ImagePlus, X } from "lucide-react";
 
+interface Category {
+  id: string;
+  name?: string;
+  name_mm?: string;
+  icon?: string;
+  order_index: number;
+}
+
 interface ProductFormData {
   name: string;
   name_mm: string;
   description: string;
   price: number;
+  category_id: string;
   images: File[];
 }
 
@@ -39,10 +48,12 @@ export default function AddProductPage() {
     name_mm: "",
     description: "",
     price: 0,
+    category_id: "",
     images: [],
   });
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  // Fetch user's shop
+  // Fetch user's shop and categories
   useEffect(() => {
     const fetchShop = async () => {
       if (!user?.uid) return;
@@ -50,16 +61,17 @@ export default function AddProductPage() {
         const response = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
         if (response.ok) {
           const data = await response.json();
-          setShopId(data.data.shop_id);
-        } else {
-          router.push("/onboarding/shop-registration");
+          if (data.data) {
+            setShopId(data.data.shop_id);
+            setCategories(data.data.categories || []);
+          }
         }
-      } catch {
-        router.push("/onboarding/shop-registration");
+      } catch (error) {
+        console.error("Error fetching shop:", error);
       }
     };
     fetchShop();
-  }, [user?.uid, router]);
+  }, [user?.uid]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -140,6 +152,7 @@ export default function AddProductPage() {
           description: formData.description,
           price: formData.price,
           image_urls: imageUrls,
+          category_id: formData.category_id || undefined,
         }),
       });
 
@@ -159,13 +172,13 @@ export default function AddProductPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-green-600" />
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Product Added!</h1>
-          <p className="text-gray-600 mb-8">Your product is now visible on the map.</p>
+          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-2">Product Added!</h1>
+          <p className="text-[var(--text-gray)] mb-8">Your product is now visible on the map.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push("/shop/dashboard")}
@@ -197,19 +210,19 @@ export default function AddProductPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[var(--background)]">
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => router.push("/shop/dashboard")}
-                  className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                  className="p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
                 >
-                  <ArrowLeft className="h-5 w-5 text-gray-600" />
+                  <ArrowLeft className="h-5 w-5 text-[var(--text-gray)]" />
                 </button>
-                <h1 className="text-xl font-semibold text-gray-900">Add New Product</h1>
+                <h1 className="text-xl font-semibold text-[var(--text-dark)]">Add New Product</h1>
               </div>
             </div>
           </div>
@@ -217,7 +230,7 @@ export default function AddProductPage() {
 
         <main className="max-w-4xl mx-auto px-4 py-6">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-500">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
             </div>
@@ -226,7 +239,7 @@ export default function AddProductPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Product Name */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                 Product Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -234,14 +247,14 @@ export default function AddProductPage() {
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Enter product name"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
                 required
               />
             </div>
 
             {/* Product Name (Myanmar) */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                 Product Name (Myanmar)
               </label>
               <input
@@ -249,13 +262,13 @@ export default function AddProductPage() {
                 value={formData.name_mm}
                 onChange={(e) => setFormData(prev => ({ ...prev, name_mm: e.target.value }))}
                 placeholder="မြန်မာဘာသာဖြင့် ထည့်ပါ"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
               />
             </div>
 
             {/* Description */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                 Description
               </label>
               <textarea
@@ -263,17 +276,17 @@ export default function AddProductPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Describe your product..."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900 resize-none"
+                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)] resize-none"
               />
             </div>
 
             {/* Price */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                 Product Price (MMK) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
                 <input
                   type="number"
                   value={formData.price || ""}
@@ -283,21 +296,45 @@ export default function AddProductPage() {
                     setFormData(prev => ({ ...prev, price: numValue }));
                   }}
                   min={1}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
                   required
                 />
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[var(--text-gray)] mt-1">
                 Actual price of the product.
               </p>
             </div>
 
+            {/* Custom Category Dropdown */}
+            {categories.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+                  Product Category (Optional)
+                </label>
+                <select
+                  value={formData.category_id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                >
+                  <option value="">-- Select a category --</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.icon || "📦"} {cat.name || cat.name_mm || "Unnamed"}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-sm text-[var(--text-gray)] mt-1">
+                  Assign this product to a custom category.
+                </p>
+              </div>
+            )}
+
             {/* Image Upload */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                 Product Images <span className="text-red-500">*</span>
               </label>
-              <p className="text-sm text-gray-500 mb-3">
+              <p className="text-sm text-[var(--text-gray)] mb-3">
                 Upload up to 5 images (max 5MB each)
               </p>
               
@@ -325,11 +362,11 @@ export default function AddProductPage() {
 
               {/* Upload Button */}
               {imagePreviews.length < 5 && (
-                <label className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#667eea] hover:bg-gray-50 transition-colors">
+                <label className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-gray-500/30 rounded-xl cursor-pointer hover:border-[#667eea] hover:bg-gray-500/10 transition-colors">
                   <div className="text-center">
-                    <ImagePlus className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <span className="text-sm text-gray-500">Add Photo</span>
-                    <span className="text-xs text-gray-400 block mt-1">
+                    <ImagePlus className="h-8 w-8 text-[var(--text-gray)] mx-auto mb-2" />
+                    <span className="text-sm text-[var(--text-gray)]">Add Photo</span>
+                    <span className="text-xs text-gray-500 block mt-1">
                       {imagePreviews.length}/5
                     </span>
                   </div>

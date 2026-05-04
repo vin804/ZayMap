@@ -15,7 +15,8 @@ import {
   Phone,
   MapPin,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  X
 } from "lucide-react";
 
 type Language = "en" | "my";
@@ -29,6 +30,7 @@ interface ShopFormData {
   facebook: string;
   tiktok: string;
   logo: File | null;
+  banners: File[];
   location: {
     lat: number;
     lng: number;
@@ -61,6 +63,9 @@ const TRANSLATIONS = {
     shopLogo: "Shop Logo",
     uploadLogo: "Upload Logo",
     logoHint: "Max 5MB, JPG or PNG",
+    shopBanner: "Shop Banner",
+    uploadBanner: "Upload Banner",
+    bannerHint: "Max 5MB, one banner image (optional)",
     // Contact
     phone: "Phone Number",
     phonePlaceholder: "+959...",
@@ -117,6 +122,9 @@ const TRANSLATIONS = {
     shopLogo: "ဆိုင်လိုဂို",
     uploadLogo: "လိုဂိုတင်ပါ",
     logoHint: "အများဆုံး ၅MB၊ JPG သို့မဟုတ် PNG",
+    shopBanner: "ဆိုင်ဘန်နာ",
+    uploadBanner: "ဘန်နာတင်ပါ",
+    bannerHint: "အများဆုံး ၅MB၊ ဘန်နာပုံ ၁ ပုံ (မဖြစ်မနေ မဟုတ်)",
     // Contact
     phone: "ဖုန်းနံပါတ်",
     phonePlaceholder: "+959...",
@@ -162,6 +170,7 @@ export default function ShopRegistrationPage() {
   const [success, setSuccess] = useState(false);
   const [createdShopLocation, setCreatedShopLocation] = useState<{lat: number; lng: number} | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<ShopFormData>({
     name: "",
@@ -172,6 +181,7 @@ export default function ShopRegistrationPage() {
     facebook: "",
     tiktok: "",
     logo: null,
+    banners: [],
     location: null,
   });
 
@@ -221,6 +231,49 @@ export default function ShopRegistrationPage() {
     };
     reader.readAsDataURL(file);
     setError(null);
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Validate total count (max 1)
+    if (formData.banners.length + files.length > 1) {
+      setError(language === "en" ? "Only 1 banner image allowed" : "ဘန်နာပုံ ၁ ပုံသာခွင့်ပြု");
+      return;
+    }
+
+    // Validate each file
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError(t.fileTooLarge);
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        setError(t.invalidFileType);
+        return;
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, banners: [...prev.banners, ...files] }));
+    
+    // Create previews
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreviews((prev) => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+    setError(null);
+  };
+
+  const removeBanner = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      banners: prev.banners.filter((_, i) => i !== index),
+    }));
+    setBannerPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const validateStep = () => {
@@ -289,6 +342,16 @@ export default function ShopRegistrationPage() {
         }
       }
 
+      // Upload banners to Cloudinary if selected
+      let bannerUrls: string[] = [];
+      if (formData.banners.length > 0) {
+        const uploadResult = await uploadImages(formData.banners, "shop-banners");
+        if (uploadResult.error) {
+          throw new Error(uploadResult.error);
+        }
+        bannerUrls = uploadResult.urls;
+      }
+
       // Create shop in database
       const response = await fetch("/api/shops/create", {
         method: "POST",
@@ -302,6 +365,7 @@ export default function ShopRegistrationPage() {
           facebook: formData.facebook,
           tiktok: formData.tiktok,
           logo_url: logoUrl,
+          image_urls: bannerUrls,
           location: location,
           owner_id: user?.uid,
         }),
@@ -329,17 +393,17 @@ export default function ShopRegistrationPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-green-600" />
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.success}</h1>
-          <p className="text-gray-600 mb-8">{t.successDesc}</p>
+          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-2">{t.success}</h1>
+          <p className="text-[var(--text-gray)] mb-8">{t.successDesc}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push("/shop/dashboard")}
-              className="px-8 py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              className="px-8 py-4 bg-[#667eea] text-white rounded-xl font-semibold hover:opacity-90 transition-all"
             >
               {t.startUploading}
             </button>
@@ -356,21 +420,21 @@ export default function ShopRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
+      <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => step === 1 ? router.push("/map") : handlePrev()}
-              className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-600">{t.back}</span>
+              <ArrowLeft className="h-5 w-5 text-[var(--text-gray)]" />
+              <span className="text-[var(--text-gray)]">{t.back}</span>
             </button>
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-500/10 rounded-full text-sm font-medium text-[var(--text-gray)] hover:bg-gray-500/20 transition-colors"
             >
               <Globe className="h-4 w-4" />
               {language === "en" ? t.english : t.myanmar}
@@ -381,11 +445,11 @@ export default function ShopRegistrationPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-[#667eea] to-[#764ba2] rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-[#667eea] rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Store className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.createShop}</h1>
-          <p className="text-gray-600">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-2">{t.createShop}</h1>
+          <p className="text-[var(--text-gray)]">{t.subtitle}</p>
         </div>
 
         {/* Progress Steps */}
@@ -394,16 +458,16 @@ export default function ShopRegistrationPage() {
             <div
               key={s}
               className={`flex items-center gap-2 ${
-                s < step ? "text-green-600" : s === step ? "text-[#667eea]" : "text-gray-400"
+                s < step ? "text-green-500" : s === step ? "text-[#667eea]" : "text-gray-500"
               }`}
             >
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                   s < step
-                    ? "bg-green-100"
+                    ? "bg-green-500/20"
                     : s === step
                     ? "bg-[#667eea] text-white"
-                    : "bg-gray-100"
+                    : "bg-gray-500/10"
                 }`}
               >
                 {s < step ? "✓" : s}
@@ -411,52 +475,52 @@ export default function ShopRegistrationPage() {
               <span className="text-sm hidden sm:inline">
                 {s === 1 ? t.step1 : s === 2 ? t.step2 : t.step3}
               </span>
-              {s < 3 && <div className="w-8 h-px bg-gray-300 mx-2" />}
+              {s < 3 && <div className="w-8 h-px bg-gray-500/30 mx-2" />}
             </div>
           ))}
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-[var(--card-bg)] rounded-2xl shadow-sm border border-gray-200/20 p-6">
           {step === 1 && (
             <div className="space-y-6">
               {/* Shop Name (English) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.shopName}
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
                   placeholder={t.shopNamePlaceholder}
                 />
               </div>
 
               {/* Shop Name (Myanmar) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.shopNameMM}
                 </label>
                 <input
                   type="text"
                   value={formData.name_mm}
                   onChange={(e) => handleInputChange("name_mm", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
                   placeholder={t.shopNameMMPlaceholder}
                 />
               </div>
 
               {/* Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.category}
                 </label>
                 <select
                   value={formData.category}
                   onChange={(e) => handleInputChange("category", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent bg-white"
+                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
                 >
                   <option value="">{t.selectACategory}</option>
                   {CATEGORIES.map((cat) => (
@@ -469,21 +533,21 @@ export default function ShopRegistrationPage() {
 
               {/* Logo Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.shopLogo}
                 </label>
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
+                  <div className="w-20 h-20 bg-gray-500/10 rounded-xl flex items-center justify-center overflow-hidden">
                     {logoPreview ? (
                       <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
                     ) : (
-                      <Store className="h-8 w-8 text-gray-400" />
+                      <Store className="h-8 w-8 text-[var(--text-gray)]" />
                     )}
                   </div>
                   <div>
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-                      <Upload className="h-4 w-4 text-gray-700" />
-                      <span className="text-sm font-medium text-gray-900">{t.uploadLogo}</span>
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/10 rounded-lg cursor-pointer hover:bg-gray-500/20 transition-colors">
+                      <Upload className="h-4 w-4 text-[var(--text-gray)]" />
+                      <span className="text-sm font-medium text-[var(--text-dark)]">{t.uploadLogo}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -491,8 +555,44 @@ export default function ShopRegistrationPage() {
                         className="hidden"
                       />
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">{t.logoHint}</p>
+                    <p className="text-xs text-[var(--text-gray)] mt-1">{t.logoHint}</p>
                   </div>
+                </div>
+              </div>
+
+              {/* Banner Upload */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+                  {t.shopBanner}
+                </label>
+                <div className="space-y-3">
+                  {/* Banner Preview */}
+                  {bannerPreviews.length > 0 && (
+                    <div className="relative aspect-video rounded-lg overflow-hidden max-w-md">
+                      <img src={bannerPreviews[0]} alt="Banner" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeBanner(0)}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-white rounded-full hover:bg-red-500 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Upload Button */}
+                  {bannerPreviews.length < 1 && (
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/10 rounded-lg cursor-pointer hover:bg-gray-500/20 transition-colors">
+                      <Upload className="h-4 w-4 text-[var(--text-gray)]" />
+                      <span className="text-sm font-medium text-[var(--text-dark)]">{t.uploadBanner}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                  <p className="text-xs text-[var(--text-gray)]">{t.bannerHint}</p>
                 </div>
               </div>
             </div>
@@ -502,16 +602,16 @@ export default function ShopRegistrationPage() {
             <div className="space-y-6">
               {/* Phone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.phone} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
                     placeholder={t.phonePlaceholder}
                   />
                 </div>
@@ -519,16 +619,16 @@ export default function ShopRegistrationPage() {
 
               {/* Address */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.address} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <MapPin className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
+                  <MapPin className="absolute left-4 top-4 h-5 w-5 text-[var(--text-gray)]" />
                   <textarea
                     value={formData.address}
                     onChange={(e) => handleInputChange("address", e.target.value)}
                     rows={3}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent resize-none"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent resize-none"
                     placeholder={t.addressPlaceholder}
                   />
                 </div>
@@ -540,16 +640,16 @@ export default function ShopRegistrationPage() {
             <div className="space-y-6">
               {/* Facebook */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.facebook}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-600 font-bold text-lg">f</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500 font-bold text-lg">f</span>
                   <input
                     type="text"
                     value={formData.facebook}
                     onChange={(e) => handleInputChange("facebook", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
                     placeholder={t.facebookPlaceholder}
                   />
                 </div>
@@ -557,7 +657,7 @@ export default function ShopRegistrationPage() {
 
               {/* TikTok */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
                   {t.tiktok}
                 </label>
                 <div className="relative">
@@ -566,21 +666,21 @@ export default function ShopRegistrationPage() {
                     type="text"
                     value={formData.tiktok}
                     onChange={(e) => handleInputChange("tiktok", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
                     placeholder={t.tiktokPlaceholder}
                   />
                 </div>
               </div>
 
               {/* Summary */}
-              <div className="bg-gray-50 rounded-xl p-4 mt-6">
-                <h4 className="font-medium text-gray-900 mb-3">
+              <div className="bg-gray-500/10 rounded-xl p-4 mt-6">
+                <h4 className="font-medium text-[var(--text-dark)] mb-3">
                   {language === "en" ? "Summary" : "အကျဉ်းချုပ်"}
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-gray-700 font-medium">{t.shopName}:</span> <span className="text-gray-900">{formData.name}</span></p>
-                  <p><span className="text-gray-700 font-medium">{t.category}:</span> <span className="text-gray-900">{t.categories[formData.category as keyof typeof t.categories]}</span></p>
-                  <p><span className="text-gray-700 font-medium">{t.phone}:</span> <span className="text-gray-900">{formData.phone}</span></p>
+                  <p><span className="text-[var(--text-gray)] font-medium">{t.shopName}:</span> <span className="text-[var(--text-dark)]">{formData.name}</span></p>
+                  <p><span className="text-[var(--text-gray)] font-medium">{t.category}:</span> <span className="text-[var(--text-dark)]">{t.categories[formData.category as keyof typeof t.categories]}</span></p>
+                  <p><span className="text-[var(--text-gray)] font-medium">{t.phone}:</span> <span className="text-[var(--text-dark)]">{formData.phone}</span></p>
                 </div>
               </div>
             </div>
@@ -588,9 +688,9 @@ export default function ShopRegistrationPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
+            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-600 text-sm">{error}</p>
+              <p className="text-red-500 text-sm">{error}</p>
             </div>
           )}
 
@@ -599,7 +699,7 @@ export default function ShopRegistrationPage() {
             {step > 1 && (
               <button
                 onClick={handlePrev}
-                className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 px-4 border border-gray-200/20 text-[var(--text-gray)] rounded-xl font-medium hover:bg-gray-500/10 transition-colors"
               >
                 {t.prev}
               </button>
@@ -607,7 +707,7 @@ export default function ShopRegistrationPage() {
             <button
               onClick={step === 3 ? handleSubmit : handleNext}
               disabled={loading}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 px-4 bg-[#667eea] text-white rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

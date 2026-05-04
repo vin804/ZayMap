@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, collection, query as firestoreQuery, where, getDocs } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
 
 // Initialize Firebase within the route handler for server-side reliability
@@ -19,6 +19,14 @@ function getDb() {
   return getFirestore();
 }
 
+interface Category {
+  id: string;
+  name?: string;
+  name_mm?: string;
+  icon?: string;
+  order_index: number;
+}
+
 interface Shop {
   shop_id: string;
   name: string;
@@ -27,6 +35,9 @@ interface Shop {
   phone: string;
   address: string;
   logo_url?: string;
+  image_urls?: string[];
+  description?: string;
+  description_mm?: string;
   latitude: number;
   longitude: number;
   delivery_available: boolean;
@@ -39,7 +50,10 @@ interface Shop {
   response_time_hours: number;
   rating: number;
   review_count: number;
+  categories: Category[];
   owner_id?: string;
+  facebook?: string;
+  tiktok?: string;
 }
 
 interface Product {
@@ -99,17 +113,30 @@ export async function GET(
 
     const shopData = shopSnap.data();
     
-    // Calculate overall rating from the three metrics
-    const avgRating = (
-      (shopData.avg_responsiveness_rating || 0) +
-      (shopData.avg_delivery_quality_rating || 0) +
-      (shopData.avg_product_review_rating || 0)
-    ) / 3;
+    // Fetch ALL shop reviews and calculate rating (any review_type)
+    const reviewsRef = collection(db, "reviews");
+    const shopReviewsQuery = firestoreQuery(
+      reviewsRef,
+      where("shop_id", "==", shopId)
+    );
+    const reviewsSnap = await getDocs(shopReviewsQuery);
+    
+    let totalRating = 0;
+    let reviewCount = 0;
+    reviewsSnap.forEach((reviewDoc) => {
+      const reviewData = reviewDoc.data();
+      if (reviewData.rating) {
+        totalRating += reviewData.rating;
+        reviewCount++;
+      }
+    });
+    
+    const calculatedRating = reviewCount > 0 ? totalRating / reviewCount : 0;
+    
+    // Use calculated rating from actual reviews, fallback to stored metrics
+    const avgRating = calculatedRating || shopData.rating || 0;
 
-    const totalReviewCount = 
-      (shopData.responsiveness_review_count || 0) +
-      (shopData.delivery_quality_review_count || 0) +
-      (shopData.product_review_count || 0);
+    const totalReviewCount = reviewCount || shopData.review_count || 0;
 
     const shop: Shop = {
       shop_id: shopId,
@@ -131,7 +158,13 @@ export async function GET(
       response_time_hours: shopData.response_time_hours || 24,
       rating: avgRating,
       review_count: totalReviewCount,
+      categories: shopData.categories || [],
       owner_id: shopData.owner_id || shopData.owner_uid || shopData.user_id,
+      facebook: shopData.facebook || "",
+      tiktok: shopData.tiktok || "",
+      image_urls: shopData.image_urls || [],
+      description: shopData.description || "",
+      description_mm: shopData.description_mm || "",
     };
 
     return NextResponse.json({ data: shop }, { status: 200 });
