@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthGuard } from "@/components/auth-guard";
 import { MapComponent } from "@/components/map/map-component";
 import { ShopSidebar } from "@/components/map/shop-sidebar";
 import { RadiusControl } from "@/components/map/radius-control";
@@ -12,7 +12,7 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 import { useShopsNearby, Shop } from "@/hooks/use-shops-nearby";
 import { useShopSearch, SearchShop } from "@/hooks/use-shop-search";
 import { useRouting, RouteStep } from "@/hooks/use-routing";
-import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, Sun, Moon } from "lucide-react";
+import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, Sun, Moon, Bookmark } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/lib/theme-context";
@@ -35,6 +35,7 @@ export default function MapPage() {
 
 function MapPageContent() {
   const { user, logout } = useAuth();
+  const { checkAuth, AuthGuardModal } = useAuthGuard();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -161,7 +162,7 @@ function MapPageContent() {
   }, [search, clearResults, radius]);
 
   // Use search results when searching, otherwise use nearby shops
-  // Handle get directions
+  // Handle get directions - PUBLIC, no auth required
   const handleGetDirections = useCallback((shop: Shop) => {
     setDirectionsShop(shop);
     setShowDirectionsPanel(true);
@@ -227,8 +228,7 @@ function MapPageContent() {
   };
 
   return (
-    <ProtectedRoute>
-      <div className="flex h-screen flex-col bg-[var(--background)]">
+    <div className="flex h-screen flex-col bg-[var(--background)]">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-[var(--card-bg)] border-b border-gray-200/20 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between px-4 py-3">
@@ -261,49 +261,40 @@ function MapPageContent() {
                 )}
               </button>
 
-              {/* Saved Products Button */}
+              {/* Saved Button - always visible, requires auth */}
               <button
-                onClick={() => router.push("/saved")}
-                className="hidden sm:flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                onClick={() => {
+                  if (!checkAuth(user, "view saved products")) return;
+                  router.push("/saved");
+                }}
+                className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
                 title="Saved Products"
               >
-                <Heart className="h-4 w-4 text-[#667eea]" />
+                <Bookmark className="h-4 w-4 text-[#667eea]" />
                 <span>Saved</span>
               </button>
 
-              {/* Mobile Saved Button */}
+              {/* Followed Shops Button - always visible, requires auth */}
               <button
-                onClick={() => router.push("/saved")}
-                className="flex sm:hidden items-center gap-1 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)]"
-                title="Saved Products"
-              >
-                <Heart className="h-4 w-4 text-[#667eea]" />
-              </button>
-
-              {/* Followed Shops Button */}
-              <button
-                onClick={() => router.push("/followed-shops")}
-                className="hidden sm:flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                onClick={() => {
+                  if (!checkAuth(user, "view followed shops")) return;
+                  router.push("/followed-shops");
+                }}
+                className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
                 title="Followed Shops"
               >
                 <Star className="h-4 w-4 text-[#667eea]" />
                 <span>Following</span>
               </button>
 
-              {/* Mobile Followed Shops Button */}
-              <button
-                onClick={() => router.push("/followed-shops")}
-                className="flex sm:hidden items-center gap-1 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)]"
-                title="Followed Shops"
-              >
-                <Star className="h-4 w-4 text-[#667eea]" />
-              </button>
-
-              {/* My Shop Button - only show if user has a shop and check complete */}
+              {/* My Shop Button - always visible when has shop, requires auth */}
               {!isCheckingShop && hasShop && (
                 <button
-                  onClick={() => router.push("/shop/dashboard")}
-                  className="hidden sm:flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
+                  onClick={() => {
+                    if (!checkAuth(user, "access my shop")) return;
+                    router.push("/shop/dashboard");
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
                   title="My Shop Dashboard"
                 >
                   <Store className="h-4 w-4" />
@@ -311,35 +302,17 @@ function MapPageContent() {
                 </button>
               )}
 
-              {/* Mobile My Shop Button - only show if user has a shop and check complete */}
-              {!isCheckingShop && hasShop && (
-                <button
-                  onClick={() => router.push("/shop/dashboard")}
-                  className="flex sm:hidden items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
-                  title="My Shop Dashboard"
-                >
-                  <Store className="h-4 w-4" />
-                </button>
-              )}
-              
-              {/* Register Shop Button - only show if user doesn't have a shop and check complete */}
+              {/* Register Shop Button - always visible, requires auth */}
               {!isCheckingShop && !hasShop && (
                 <button
-                  onClick={() => router.push("/onboarding/shop-registration")}
-                  className="hidden sm:flex items-center gap-2 rounded-lg border-2 border-[#667eea] text-[#667eea] px-4 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
+                  onClick={() => {
+                    if (!checkAuth(user, "register a shop")) return;
+                    router.push("/onboarding/shop-registration");
+                  }}
+                  className="flex items-center gap-2 rounded-lg border-2 border-[#667eea] text-[#667eea] px-4 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Register Shop</span>
-                </button>
-              )}
-              
-              {/* Mobile Register Shop Button - only show if user doesn't have a shop and check complete */}
-              {!isCheckingShop && !hasShop && (
-                <button
-                  onClick={() => router.push("/onboarding/shop-registration")}
-                  className="flex sm:hidden items-center gap-1 rounded-lg border-2 border-[#667eea] text-[#667eea] px-3 py-2 text-sm font-medium hover:bg-[#667eea] hover:text-white"
-                >
-                  <Plus className="h-4 w-4" />
                 </button>
               )}
               
@@ -356,21 +329,43 @@ function MapPageContent() {
                   }}
                 />
               </div>
-              <Link
-                href="/profile"
-                className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex hover:text-[#667eea] transition-colors cursor-pointer"
-              >
-                <User className="h-4 w-4" />
-                <span className="max-w-[100px] truncate">{user?.displayName}</span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
-                title="Logout"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+              {/* Profile & Auth Buttons */}
+              {user ? (
+                <>
+                  <Link
+                    href="/auth/profile"
+                    className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex hover:text-[#667eea] transition-colors cursor-pointer"
+                  >
+                    <User className="h-4 w-4" />
+                    <span className="max-w-[100px] truncate">{user?.displayName}</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
+                    title="Logout"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Log out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/auth"
+                    className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex hover:text-[#667eea] transition-colors cursor-pointer"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>Log in</span>
+                  </Link>
+                  <Link
+                    href="/auth"
+                    className="flex items-center gap-2 rounded-lg bg-[#667eea] text-white px-4 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>Sign up</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -520,8 +515,8 @@ function MapPageContent() {
               </div>
             </div>
           )}
-        </div>
       </div>
-    </ProtectedRoute>
+      <AuthGuardModal />
+    </div>
   );
 }

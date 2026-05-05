@@ -52,7 +52,17 @@ export const storage = app && typeof window !== "undefined" ? getStorage(app) : 
 export { app };
 
 export const googleProvider = app && typeof window !== "undefined" ? new GoogleAuthProvider() : null;
-export const facebookProvider = app && typeof window !== "undefined" ? new FacebookAuthProvider() : null;
+
+// Configure Facebook provider - only request public_profile, not email
+// Email requires additional Facebook permissions that aren't needed for basic sign-in
+const fbProvider = app && typeof window !== "undefined" ? new FacebookAuthProvider() : null;
+if (fbProvider) {
+  // Clear any default scopes first, then add only public_profile
+  fbProvider.setCustomParameters({
+    scope: "public_profile"
+  });
+}
+export const facebookProvider = fbProvider;
 
 export function isFirebaseInitialized(): boolean {
   return isFirebaseConfigured && !!auth;

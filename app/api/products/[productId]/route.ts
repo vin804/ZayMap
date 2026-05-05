@@ -200,8 +200,10 @@ export async function GET(
         address: shopData?.address,
         delivery_available: shopData?.delivery_available || false,
         logo_url: shopData?.logo_url,
-        latitude: shopData?.location?.latitude || shopData?.latitude || 0,
-        longitude: shopData?.location?.longitude || shopData?.longitude || 0,
+        // @ts-ignore - latitude/longitude may be in different locations
+        latitude: (shopData as any)?.location?.latitude || (shopData as any)?.latitude || 0,
+        // @ts-ignore
+        longitude: (shopData as any)?.location?.longitude || (shopData as any)?.longitude || 0,
       },
       reviews,
       reviews_count: reviews.length,

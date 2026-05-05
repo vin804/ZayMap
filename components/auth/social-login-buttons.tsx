@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
+import { FacebookAuthProvider, signInWithRedirect } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface SocialLoginButtonsProps {
   mode: "signin" | "signup";
 }
 
 export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
-  const { signInWithGoogle, signInWithFacebook } = useAuth();
+  const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
@@ -26,7 +28,16 @@ export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
   const handleFacebookSignIn = async () => {
     setLoading("facebook");
     try {
-      await signInWithFacebook();
+      if (!auth) throw new Error("Auth not initialized");
+      // Create fresh provider instance with ONLY public_profile
+      // Must use custom OAuth flow to avoid Firebase's default email scope
+      const fbProvider = new FacebookAuthProvider();
+      // Set ONLY public_profile - no email
+      fbProvider.setCustomParameters({
+        scope: "public_profile"
+      });
+      // Use redirect for production
+      await signInWithRedirect(auth, fbProvider);
     } catch {
       // Error is handled by auth context
     } finally {

@@ -19,7 +19,8 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, googleProvider, facebookProvider } from "./firebase";
+import { FacebookAuthProvider } from "firebase/auth";
+import { auth, db, googleProvider } from "./firebase";
 
 export interface User {
   uid: string;
@@ -222,10 +223,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithFacebook = async () => {
-    if (!auth || !facebookProvider) throw new Error("Auth not initialized");
+    if (!auth) throw new Error("Auth not initialized");
     try {
       setError(null);
-      await signInWithPopup(auth, facebookProvider);
+      // Create fresh provider instance with only public_profile scope
+      // This ensures email is NOT requested (requires extra FB permissions)
+      const fbProvider = new FacebookAuthProvider();
+      fbProvider.setCustomParameters({
+        scope: "public_profile"
+      });
+      await signInWithPopup(auth, fbProvider);
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);

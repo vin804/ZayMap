@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthGuard } from "@/components/auth-guard";
 import Link from "next/link";
 import { 
   Star, 
@@ -287,9 +288,12 @@ export default function ProductDetailPage() {
     setIsSaved(savedProducts.includes(productId));
   }, [productId, user?.uid]);
 
+  // Auth guard for protected features
+  const { checkAuth, AuthGuardModal } = useAuthGuard();
+
   // Toggle save product
   const toggleSave = () => {
-    if (!user?.uid) return;
+    if (!checkAuth(user, "save products")) return;
     const savedProducts = JSON.parse(localStorage.getItem(`savedProducts_${user.uid}`) || "[]");
     if (isSaved) {
       const updated = savedProducts.filter((id: string) => id !== productId);
@@ -1075,6 +1079,9 @@ export default function ProductDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Auth Guard Modal */}
+      <AuthGuardModal />
     </div>
   );
 }

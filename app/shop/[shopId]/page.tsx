@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthGuard } from "@/components/auth-guard";
 import { 
   Star, 
   MapPin, 
@@ -284,6 +285,9 @@ export default function ShopDetailPage() {
   const FEATURED_COUNT = 3;
 
   const t = TRANSLATIONS[language];
+
+  // Auth guard for protected features
+  const { checkAuth, AuthGuardModal } = useAuthGuard();
 
   // Load user votes from localStorage
   useEffect(() => {
@@ -674,7 +678,7 @@ export default function ShopDetailPage() {
               <div className="flex gap-2">
                 <button 
                   onClick={() => {
-                    if (!user?.uid) return;
+                    if (!checkAuth(user, "follow this shop")) return;
                     const followedShops = JSON.parse(localStorage.getItem(`followedShops_${user.uid}`) || "[]");
                     if (isFollowing) {
                       const updated = followedShops.filter((id: string) => id !== shopId);
