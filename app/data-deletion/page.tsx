@@ -29,7 +29,6 @@ export default function DataDeletionPage() {
             <li>Your profile information</li>
             <li>Your saved products and followed shops</li>
             <li>Your shop listings (if you have any)</li>
-            <li>Your booking history</li>
             <li>Any reviews you've submitted</li>
           </ul>
         </section>

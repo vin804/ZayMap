@@ -3,7 +3,6 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
-import { BookingNotificationContainer } from "@/components/booking-notification";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -30,7 +29,6 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
-            <BookingNotificationContainer />
           </AuthProvider>
         </ThemeProvider>
       </body>

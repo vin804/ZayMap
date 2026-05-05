@@ -22,7 +22,7 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-xl font-semibold text-gray-800 mb-3">2. How We Use Information</h2>
           <p className="text-gray-600">
             We use the information we collect to operate, maintain, and improve our services, 
-            including to display shops on maps, process bookings, and provide customer support.
+            including to display shops on maps and provide customer support.
           </p>
         </section>
 

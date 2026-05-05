@@ -11,13 +11,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading) {
-      if (user) {
-        router.push("/map");
-      } else {
-        router.push("/auth");
-      }
+      // Everyone goes to map - auth only required for protected features
+      router.push("/map");
     }
-  }, [user, loading, router]);
+  }, [loading, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50">
