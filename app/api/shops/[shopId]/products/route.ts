@@ -106,6 +106,7 @@ export async function GET(
         price: data.price || 0,
         booking_fee: data.booking_fee || 0,
         currency: data.currency || "MMK",
+        // @ts-ignore - category_id may exist on some products
         category_id: data.category_id || null,
         upload_timestamp: data.upload_timestamp || data.created_at || new Date().toISOString(),
         updated_at: data.updated_at,
