@@ -950,7 +950,7 @@ export default function ShopDetailPage() {
               {/* Rating Summary */}
               <div className="lg:col-span-1">
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="text-4xl font-bold text-black">{shop.rating.toFixed(1)}</span>
+                  <span className="text-4xl font-bold text-[var(--text-dark)]">{shop.rating.toFixed(1)}</span>
                   <div>
                     <div className="flex items-center">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -960,7 +960,7 @@ export default function ShopDetailPage() {
                         />
                       ))}
                     </div>
-                    <p className="text-sm text-black">{shop.review_count} {t.reviews.toLowerCase()}</p>
+                    <p className="text-sm text-[var(--text-gray)]">{shop.review_count} {t.reviews.toLowerCase()}</p>
                   </div>
                 </div>
                 
@@ -968,14 +968,14 @@ export default function ShopDetailPage() {
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((rating) => (
                     <div key={rating} className="flex items-center gap-2">
-                      <span className="text-sm text-black w-8">{rating} {language === "en" ? "star" : "ကြယ်"}</span>
+                      <span className="text-sm text-[var(--text-dark)] w-8">{rating} {language === "en" ? "star" : "ကြယ်"}</span>
                       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-yellow-400 rounded-full transition-all"
                           style={{ width: `${ratingDistribution.percentages[rating as keyof typeof ratingDistribution.percentages]}%` }}
                         />
                       </div>
-                      <span className="text-sm text-black w-10 text-right">
+                      <span className="text-sm text-[var(--text-dark)] w-10 text-right">
                         {ratingDistribution.percentages[rating as keyof typeof ratingDistribution.percentages]}%
                       </span>
                     </div>
