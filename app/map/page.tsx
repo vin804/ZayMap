@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthGuard } from "@/components/auth-guard";
