@@ -7,6 +7,7 @@ interface RadiusControlProps {
   onChange: (radius: number) => void;
   min?: number;
   max?: number;
+  compact?: boolean;
 }
 
 export function RadiusControl({
@@ -14,6 +15,7 @@ export function RadiusControl({
   onChange,
   min = 5,
   max = 1800,
+  compact = false,
 }: RadiusControlProps) {
   const [inputValue, setInputValue] = useState(radius.toString());
   const [sliderValue, setSliderValue] = useState(radius);
@@ -56,9 +58,11 @@ export function RadiusControl({
 
   return (
     <div className="flex items-center gap-3 rounded-lg bg-[var(--card-bg)] px-3 py-2 border border-gray-200/20">
-      <label htmlFor="radius" className="text-sm font-medium text-[var(--text-dark)]">
-        Radius:
-      </label>
+      {!compact && (
+        <label htmlFor="radius" className="text-sm font-medium text-[var(--text-dark)]">
+          Radius:
+        </label>
+      )}
       <input
         id="radius"
         type="range"

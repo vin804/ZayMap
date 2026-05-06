@@ -363,26 +363,18 @@ function MapPageContent() {
                 )}
               </div>
 
-              {/* Mobile: Radius + Sign up only */}
-              <div className="flex lg:hidden items-center gap-2">
-                <div className="flex">
-                  <RadiusControl
-                    radius={radius}
-                    onChange={(newRadius) => {
-                      setRadiusState(newRadius);
-                      const params = new URLSearchParams(searchParams.toString());
-                      params.set("radius", newRadius.toString());
-                      router.push(`/map?${params.toString()}`, { scroll: false });
-                    }}
-                  />
-                </div>
-                <Link
-                  href="/auth"
-                  className="flex items-center gap-1.5 rounded-lg bg-[#667eea] text-white px-3 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Sign up</span>
-                </Link>
+              {/* Mobile: Radius only (compact) */}
+              <div className="flex lg:hidden items-center">
+                <RadiusControl
+                  radius={radius}
+                  compact
+                  onChange={(newRadius) => {
+                    setRadiusState(newRadius);
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("radius", newRadius.toString());
+                    router.push(`/map?${params.toString()}`, { scroll: false });
+                  }}
+                />
               </div>
             </div>
           </div>
