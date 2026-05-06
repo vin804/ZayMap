@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { YANGON_COORDINATES } from "@/lib/leaflet-config";
 
+// Round coordinates to 4 decimal places (~11m precision) to prevent GPS jitter re-renders
+function roundCoord(val: number): number {
+  return Math.round(val * 10000) / 10000;
+}
+
 export interface GeolocationState {
   latitude: number;
   longitude: number;
@@ -44,13 +49,19 @@ export function useGeolocation() {
     // Watch position for real-time updates
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        setState({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          loading: false,
-          error: null,
-          permission: "granted",
+        const lat = roundCoord(position.coords.latitude);
+        const lng = roundCoord(position.coords.longitude);
+        setState((prev) => {
+          // Only update if coordinates actually changed (prevents re-renders from GPS jitter)
+          if (prev.latitude === lat && prev.longitude === lng) return prev;
+          return {
+            latitude: lat,
+            longitude: lng,
+            accuracy: position.coords.accuracy,
+            loading: false,
+            error: null,
+            permission: "granted",
+          };
         });
       },
       (err) => {

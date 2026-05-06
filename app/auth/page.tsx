@@ -1,17 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SocialLoginButtons } from "@/components/auth/social-login-buttons";
 import { SignInForm } from "@/components/auth/signin-form";
 import { SignUpForm } from "@/components/auth/signup-form";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 type AuthTab = "signin" | "signup";
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<AuthTab>("signin");
   const firebaseNotConfigured = !isFirebaseConfigured;
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to map if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/map");
+    }
+  }, [user, loading, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--background)] p-4">

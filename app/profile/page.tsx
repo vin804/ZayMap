@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useRouter } from "next/navigation";
-import { User, Camera, ArrowLeft, Save, Loader2 } from "lucide-react";
-import { updateProfile } from "firebase/auth";
+import { User, Camera, ArrowLeft, Save, Loader2, Trash2 } from "lucide-react";
+import { updateProfile, deleteUser } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { uploadImages } from "@/lib/upload";
@@ -29,6 +29,8 @@ function ProfileContent() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -92,12 +94,39 @@ function ProfileContent() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!firebaseUser) return;
+    
+    setDeleting(true);
+    try {
+      // TODO: Delete user's shop and products from your API
+      // await fetch(`/api/shops/my-shop?owner_id=${firebaseUser.uid}`, { method: 'DELETE' });
+      
+      // Delete from Firestore
+      if (db) {
+        const userRef = doc(db, "users", firebaseUser.uid);
+        await updateDoc(userRef, { deleted: true, deletedAt: new Date() });
+      }
+      
+      // Delete Firebase Auth account
+      await deleteUser(firebaseUser);
+      
+      router.push("/");
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      alert("Failed to delete account. Please try again.");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!firebaseUser) return;
-
+    
     setSaving(true);
     setMessage("");
-
+    
     try {
       // Update Firebase Auth profile
       await updateProfile(firebaseUser, {
@@ -258,6 +287,76 @@ function ProfileContent() {
               </>
             )}
           </button>
+
+          {/* Account Deletion Section */}
+          <div className="mt-8 pt-8 border-t border-gray-200/20">
+            <h3 className="text-lg font-semibold text-red-500 mb-2">Danger Zone</h3>
+            <p className="text-sm text-[var(--text-gray)] mb-4">
+              Deleting your account will permanently remove all your data. This action cannot be undone.
+            </p>
+            
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-red-500 text-red-500 px-6 py-3 font-medium hover:bg-red-500 hover:text-white transition-all"
+            >
+              <Trash2 className="h-5 w-5" />
+              Delete Account
+            </button>
+          </div>
+
+          {/* Delete Account Confirmation Modal */}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-[var(--card-bg)] rounded-xl p-6 max-w-md w-full border border-gray-200/20">
+                <h3 className="text-xl font-bold text-red-500 mb-4">Delete Account?</h3>
+                
+                <div className="space-y-4 text-[var(--text-gray)] text-sm">
+                  <p className="font-semibold text-[var(--text-dark)]">This will delete:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Your profile and account</li>
+                    <li>Your saved products</li>
+                    <li>Your followed shops</li>
+                    <li>Any reviews you&apos;ve written</li>
+                    <li className="text-red-500 font-medium">⚠️ Your shop and all its products</li>
+                  </ul>
+                  
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mt-4">
+                    <p className="text-yellow-600 text-xs">
+                      <strong>Important:</strong> If you have a shop, all your products and shop data will be permanently deleted. Consider transferring ownership or backing up your data first.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-red-500 text-white px-4 py-3 font-medium hover:bg-red-600 transition-all disabled:opacity-50"
+                  >
+                    {deleting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-5 w-5" />
+                        Yes, Delete Everything
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                    className="w-full rounded-lg border border-gray-200/20 text-[var(--text-gray)] px-4 py-3 font-medium hover:bg-gray-500/10 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

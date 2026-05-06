@@ -12,10 +12,9 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 import { useShopsNearby, Shop } from "@/hooks/use-shops-nearby";
 import { useShopSearch, SearchShop } from "@/hooks/use-shop-search";
 import { useRouting, RouteStep } from "@/hooks/use-routing";
-import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, Sun, Moon, Bookmark } from "lucide-react";
+import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, ChevronUp, Sun, Moon, Bookmark } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useTheme } from "@/lib/theme-context";
 
 // Main map page component wrapped with Suspense
 export default function MapPage() {
@@ -36,7 +35,21 @@ export default function MapPage() {
 function MapPageContent() {
   const { user, logout } = useAuth();
   const { checkAuth, AuthGuardModal } = useAuthGuard();
-  const { theme, toggleTheme } = useTheme();
+  const [theme, setThemeState] = useState("light");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem("zaymap_theme") || "light";
+    setThemeState(savedTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setThemeState(newTheme);
+    localStorage.setItem("zaymap_theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+  };
   const router = useRouter();
   const searchParams = useSearchParams();
   // Initialize radius from URL params or default to 5
@@ -54,6 +67,7 @@ function MapPageContent() {
   const [showDirectionsPanel, setShowDirectionsPanel] = useState(false);
   const [directionsShop, setDirectionsShop] = useState<Shop | null>(null);
   const [flyToUserLocation, setFlyToUserLocation] = useState(false);
+  const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
   // Load mapType from localStorage on mount, default to 'street'
   const [mapType, setMapType] = useState<'street' | 'satellite'>(() => {
     if (typeof window !== 'undefined') {
@@ -234,9 +248,9 @@ function MapPageContent() {
     <div className="flex h-screen flex-col bg-[var(--background)]">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-[var(--card-bg)] border-b border-gray-200/20 px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-3">
-              {/* Mobile menu button */}
+          <div className="flex items-center justify-between">
+            {/* Left: Hamburger + Logo */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="rounded-lg p-2 hover:bg-gray-100 lg:hidden"
@@ -250,138 +264,145 @@ function MapPageContent() {
               <h1 className="text-xl font-semibold gradient-text">ZayMap</h1>
             </div>
 
+            {/* Right side */}
             <div className="flex items-center gap-2">
-              {/* Theme Toggle Button */}
-              <button
-                onClick={toggleTheme}
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
-                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-4 w-4 text-amber-500" />
-                ) : (
-                  <Moon className="h-4 w-4 text-[#667eea]" />
+              {/* Desktop: all buttons */}
+              <div className="hidden lg:flex items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  className="flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                >
+                  {theme === "dark" ? (
+                    <Sun className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Moon className="h-4 w-4 text-[#667eea]" />
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!checkAuth(user, "view saved products")) return;
+                    router.push("/saved");
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                  title="Saved Products"
+                >
+                  <Bookmark className="h-4 w-4 text-[#667eea]" />
+                  <span>Saved</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (!checkAuth(user, "view followed shops")) return;
+                    router.push("/followed-shops");
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                  title="Followed Shops"
+                >
+                  <Star className="h-4 w-4 text-[#667eea]" />
+                  <span>Following</span>
+                </button>
+                {!isCheckingShop && hasShop && (
+                  <button
+                    onClick={() => {
+                      if (!checkAuth(user, "access my shop")) return;
+                      router.push("/shop/dashboard");
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
+                    title="My Shop Dashboard"
+                  >
+                    <Store className="h-4 w-4" />
+                    <span>My Shop</span>
+                  </button>
                 )}
-              </button>
-
-              {/* Saved Button - icon only on mobile */}
-              <button
-                onClick={() => {
-                  if (!checkAuth(user, "view saved products")) return;
-                  router.push("/saved");
-                }}
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-2.5 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
-                title="Saved Products"
-              >
-                <Bookmark className="h-4 w-4 text-[#667eea]" />
-                <span className="hidden lg:inline">Saved</span>
-              </button>
-
-              {/* Followed Shops Button - icon only on mobile */}
-              <button
-                onClick={() => {
-                  if (!checkAuth(user, "view followed shops")) return;
-                  router.push("/followed-shops");
-                }}
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-2.5 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
-                title="Followed Shops"
-              >
-                <Star className="h-4 w-4 text-[#667eea]" />
-                <span className="hidden lg:inline">Following</span>
-              </button>
-
-              {/* My Shop Button - icon only on mobile */}
-              {!isCheckingShop && hasShop && (
-                <button
-                  onClick={() => {
-                    if (!checkAuth(user, "access my shop")) return;
-                    router.push("/shop/dashboard");
-                  }}
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
-                  title="My Shop Dashboard"
-                >
-                  <Store className="h-4 w-4" />
-                  <span className="hidden lg:inline">My Shop</span>
-                </button>
-              )}
-
-              {/* Register Shop Button - icon only on mobile */}
-              {!isCheckingShop && !hasShop && (
-                <button
-                  onClick={() => {
-                    if (!checkAuth(user, "register a shop")) return;
-                    router.push("/onboarding/shop-registration");
-                  }}
-                  className="flex items-center gap-1.5 rounded-lg border-2 border-[#667eea] text-[#667eea] px-2.5 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
-                  title="Register Shop"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden lg:inline">Register</span>
-                </button>
-              )}
-              
-              {/* Radius Control - hidden on mobile */}
-              <div className="hidden sm:flex">
+                {!isCheckingShop && !hasShop && (
+                  <button
+                    onClick={() => {
+                      if (!checkAuth(user, "register a shop")) return;
+                      router.push("/onboarding/shop-registration");
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border-2 border-[#667eea] text-[#667eea] px-3 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
+                    title="Register Shop"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Register</span>
+                  </button>
+                )}
                 <RadiusControl
                   radius={radius}
                   onChange={(newRadius) => {
                     setRadiusState(newRadius);
-                    // Update URL with new radius
                     const params = new URLSearchParams(searchParams.toString());
                     params.set("radius", newRadius.toString());
                     router.push(`/map?${params.toString()}`, { scroll: false });
                   }}
                 />
+                {user ? (
+                  <>
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
+                    >
+                      <User className="h-4 w-4" />
+                      <span className="max-w-[80px] truncate">{user?.displayName}</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
+                      title="Logout"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Log out</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth"
+                      className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
+                    >
+                      <User className="h-4 w-4" />
+                      <span>Log in</span>
+                    </Link>
+                    <Link
+                      href="/auth"
+                      className="flex items-center gap-1.5 rounded-lg bg-[#667eea] text-white px-3 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
+                    >
+                      <User className="h-4 w-4" />
+                      <span>Sign up</span>
+                    </Link>
+                  </>
+                )}
               </div>
-              {/* Profile & Auth Buttons */}
-              {user ? (
-                <>
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="hidden lg:inline max-w-[80px] truncate">{user?.displayName}</span>
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-2.5 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
-                    title="Logout"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span className="hidden lg:inline">Log out</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/auth"
-                    className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="hidden lg:inline">Log in</span>
-                  </Link>
-                  <Link
-                    href="/auth"
-                    className="flex items-center gap-1.5 rounded-lg bg-[#667eea] text-white px-2.5 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="hidden lg:inline">Sign up</span>
-                  </Link>
-                </>
-              )}
+
+              {/* Mobile: Radius + Sign up only */}
+              <div className="flex lg:hidden items-center gap-2">
+                <div className="hidden sm:flex">
+                  <RadiusControl
+                    radius={radius}
+                    onChange={(newRadius) => {
+                      setRadiusState(newRadius);
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set("radius", newRadius.toString());
+                      router.push(`/map?${params.toString()}`, { scroll: false });
+                    }}
+                  />
+                </div>
+                <Link
+                  href="/auth"
+                  className="flex items-center gap-1.5 rounded-lg bg-[#667eea] text-white px-3 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
+                >
+                  <User className="h-4 w-4" />
+                  <span>Sign up</span>
+                </Link>
+              </div>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
         <div className="relative flex flex-1 overflow-hidden">
-          {/* Sidebar - Desktop always visible, Mobile toggle */}
-          <aside
-            className={`absolute left-0 top-0 z-10 h-full w-[280px] bg-[var(--card-bg)] shadow-lg transition-transform duration-300 lg:relative lg:translate-x-0 ${
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
-          >
+          {/* Desktop Sidebar - always visible with shop list */}
+          <aside className="hidden lg:block w-[280px] h-full bg-[var(--card-bg)] shadow-lg overflow-y-auto flex-shrink-0">
             <ShopSidebar
               shops={searchQuery.trim() ? [] : nearbyShops}
               loading={isLoading}
@@ -392,10 +413,119 @@ function MapPageContent() {
             />
           </aside>
 
-          {/* Overlay for mobile sidebar */}
+          {/* Mobile Nav Drawer - slides from left with nav buttons */}
+          <aside
+            className={`lg:hidden fixed inset-y-0 left-0 z-[10000] w-[280px] bg-[var(--card-bg)] shadow-xl transition-transform duration-300 ${
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <div className="p-4 space-y-2 overflow-y-auto h-full">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/20 mb-2">
+                <h2 className="font-semibold text-[var(--text-dark)]">Menu</h2>
+                <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-gray-500/10 rounded-full">
+                  <X className="h-5 w-5 text-[var(--text-gray)]" />
+                </button>
+              </div>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={() => { toggleTheme(); setSidebarOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-5 w-5 text-amber-500" />
+                ) : (
+                  <Moon className="h-5 w-5 text-[#667eea]" />
+                )}
+                <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+              </button>
+
+              {/* Saved */}
+              <button
+                onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view saved products")) return; router.push("/saved"); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+              >
+                <Bookmark className="h-5 w-5 text-[#667eea]" />
+                <span>Saved Products</span>
+              </button>
+
+              {/* Following */}
+              <button
+                onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view followed shops")) return; router.push("/followed-shops"); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+              >
+                <Star className="h-5 w-5 text-[#667eea]" />
+                <span>Followed Shops</span>
+              </button>
+
+              {/* My Shop / Register */}
+              {!isCheckingShop && hasShop && (
+                <button
+                  onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "access my shop")) return; router.push("/shop/dashboard"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+                >
+                  <Store className="h-5 w-5 text-[#667eea]" />
+                  <span>My Shop</span>
+                </button>
+              )}
+              {!isCheckingShop && !hasShop && (
+                <button
+                  onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "register a shop")) return; router.push("/onboarding/shop-registration"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+                >
+                  <Plus className="h-5 w-5 text-[#667eea]" />
+                  <span>Register Shop</span>
+                </button>
+              )}
+
+              {/* Auth Section */}
+              <div className="pt-3 border-t border-gray-200/20 mt-2">
+                {user ? (
+                  <>
+                    <Link
+                      href="/profile"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+                    >
+                      <User className="h-5 w-5 text-[#667eea]" />
+                      <span className="truncate">{user?.displayName || "Profile"}</span>
+                    </Link>
+                    <button
+                      onClick={() => { setSidebarOpen(false); handleLogout(); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 text-red-500 text-sm transition-colors"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span>Log out</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-500/10 text-[var(--text-dark)] text-sm transition-colors"
+                    >
+                      <User className="h-5 w-5 text-[#667eea]" />
+                      <span>Log in</span>
+                    </Link>
+                    <Link
+                      href="/auth"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#667eea] text-white text-sm transition-colors mt-1"
+                    >
+                      <User className="h-5 w-5" />
+                      <span>Sign up</span>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </aside>
+
+          {/* Overlay for mobile nav drawer */}
           {sidebarOpen && (
             <div
-              className="absolute inset-0 z-0 bg-black/20 lg:hidden"
+              className="fixed inset-0 z-[9999] bg-black/40 lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
           )}
@@ -475,6 +605,38 @@ function MapPageContent() {
               <Crosshair className="h-5 w-5 text-white" />
             </div>
           </button>
+
+          {/* Mobile Bottom Sheet - Shop List */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[9997]">
+            {/* Drag Handle */}
+            <div
+              onClick={() => setBottomSheetOpen(!bottomSheetOpen)}
+              className="bg-[var(--card-bg)] border-t border-gray-200/20 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] px-4 pt-3 pb-2 flex flex-col items-center cursor-pointer active:scale-[0.98] transition-transform"
+            >
+              <div className="w-10 h-1 bg-gray-400/50 rounded-full mb-1"></div>
+              <div className="flex items-center gap-1 text-xs text-[var(--text-gray)]">
+                <ChevronUp className={`h-4 w-4 transition-transform duration-300 ${bottomSheetOpen ? 'rotate-180' : ''}`} />
+                <span>{bottomSheetOpen ? 'Close' : 'Nearby Shops'}</span>
+              </div>
+            </div>
+
+            {/* Sheet Content */}
+            <div className={`bg-[var(--card-bg)] shadow-xl transition-all duration-300 ease-out ${bottomSheetOpen ? 'max-h-[60vh]' : 'max-h-0'}`}>
+              <div className="h-[60vh] overflow-y-auto">
+                <ShopSidebar
+                  shops={searchQuery.trim() ? [] : nearbyShops}
+                  loading={isLoading}
+                  error={error}
+                  radius={radius}
+                  onRetry={retryShops}
+                  onGetDirections={(shop) => {
+                    setBottomSheetOpen(false);
+                    handleGetDirections(shop);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Directions Panel - Outside main to appear above map */}
           {showDirectionsPanel && route && (

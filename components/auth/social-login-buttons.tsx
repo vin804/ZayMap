@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
-import { FacebookAuthProvider, signInWithRedirect } from "firebase/auth";
+import { FacebookAuthProvider, signInWithPopup, linkWithCredential, fetchSignInMethodsForEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 interface SocialLoginButtonsProps {
@@ -12,6 +13,7 @@ interface SocialLoginButtonsProps {
 
 export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
   const { signInWithGoogle } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
@@ -36,10 +38,35 @@ export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
       fbProvider.setCustomParameters({
         scope: "public_profile"
       });
-      // Use redirect for production
-      await signInWithRedirect(auth, fbProvider);
-    } catch {
-      // Error is handled by auth context
+      // Use popup for better reliability
+      const result = await signInWithPopup(auth, fbProvider);
+      console.log("[Facebook Login] Success:", result.user.uid);
+      // Redirect to map on success
+      router.push("/map");
+    } catch (error: any) {
+      console.error("[Facebook Login] Error:", error);
+      
+      // Handle account exists with different credential
+      if (error?.code === "auth/account-exists-with-different-credential") {
+        const email = error?.customData?.email;
+        const pendingCred = FacebookAuthProvider.credentialFromError(error);
+        
+        if (email && pendingCred) {
+          // Check what methods are available for this email
+          const methods = await fetchSignInMethodsForEmail(auth, email);
+          console.log("[Facebook Login] Existing methods for", email, ":", methods);
+          
+          // For now, show an alert - user should login with existing method
+          alert(`An account already exists with ${email}. Please sign in with ${methods[0] || "your existing method"} first, then link Facebook in your profile settings.`);
+        } else {
+          alert("An account already exists with this email. Please sign in with your existing method.");
+        }
+      } else if (error?.code === "auth/popup-closed-by-user") {
+        // User closed popup, no error needed
+        console.log("[Facebook Login] Popup closed by user");
+      } else {
+        alert("Facebook login failed. Please try again.");
+      }
     } finally {
       setLoading(null);
     }
@@ -79,20 +106,6 @@ export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
         <span>{buttonText} with Google</span>
       </button>
 
-      <button
-        onClick={handleFacebookSignIn}
-        disabled={loading !== null}
-        className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#1877F2] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#166fe5] disabled:opacity-50"
-      >
-        {loading === "facebook" ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-          </svg>
-        )}
-        <span>{buttonText} with Facebook</span>
-      </button>
-    </div>
+          </div>
   );
 }

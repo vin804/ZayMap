@@ -17,6 +17,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   User as FirebaseUser,
+  getRedirectResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { FacebookAuthProvider } from "firebase/auth";
@@ -57,17 +58,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function mapFirebaseUserToUser(
-  firebaseUser: FirebaseUser,
-  profileData?: Partial<User>
-): User {
+function mapFirebaseUserToUser(firebaseUser: FirebaseUser, provider?: string): User {
+  // Create provider-specific UID to separate Facebook/Google accounts
+  const providerId = provider || firebaseUser.providerData[0]?.providerId || "unknown";
+  const providerPrefix = providerId.toString().includes("facebook") ? "fb" : 
+                        providerId.toString().includes("google") ? "gg" : "em";
+  
   return {
     uid: firebaseUser.uid,
-    email: firebaseUser.email || "",
-    displayName: profileData?.displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
-    photoUrl: profileData?.photoUrl || firebaseUser.photoURL || undefined,
-    createdAt: profileData?.createdAt || null,
-    lastLoginAt: profileData?.lastLoginAt || null,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName,
+    photoUrl: firebaseUser.photoURL,
+    emailVerified: firebaseUser.emailVerified,
+    provider: providerId, // Store which provider was used
+    providerUid: `${providerPrefix}_${firebaseUser.uid}`, // Unique per provider
   };
 }
 
@@ -159,6 +163,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
+    // Handle redirect result (for signInWithRedirect)
+    getRedirectResult(auth).then(async (result) => {
+      console.log("[Auth] getRedirectResult:", result);
+      if (result?.user) {
+        console.log("[Auth] Redirect login successful, user:", result.user.uid);
+        setFirebaseUser(result.user);
+        try {
+          const userProfile = await createUserProfile(result.user);
+          console.log("[Auth] User profile created:", userProfile);
+          setUser(userProfile);
+        } catch (err) {
+          console.error("[Auth] Error loading user profile from redirect:", err);
+          setUser(mapFirebaseUserToUser(result.user));
+        }
+      } else {
+        console.log("[Auth] No redirect result user");
+      }
+    }).catch((error) => {
+      console.error("[Auth] Redirect result error:", error);
+    });
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
