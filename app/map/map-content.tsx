@@ -12,9 +12,10 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 import { useShopsNearby, Shop } from "@/hooks/use-shops-nearby";
 import { useShopSearch, SearchShop } from "@/hooks/use-shop-search";
 import { useRouting, RouteStep } from "@/hooks/use-routing";
-import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, ChevronUp, Sun, Moon, Bookmark } from "lucide-react";
+import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, ChevronUp, ChevronDown, Sun, Moon, Bookmark } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTheme } from "@/lib/theme-context";
 
 // Main map page component wrapped with Suspense
 export default function MapPage() {
@@ -35,21 +36,7 @@ export default function MapPage() {
 function MapPageContent() {
   const { user, logout } = useAuth();
   const { checkAuth, AuthGuardModal } = useAuthGuard();
-  const [theme, setThemeState] = useState("light");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem("zaymap_theme") || "light";
-    setThemeState(savedTheme);
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setThemeState(newTheme);
-    localStorage.setItem("zaymap_theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-  };
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Initialize radius from URL params or default to 5
@@ -68,6 +55,7 @@ function MapPageContent() {
   const [directionsShop, setDirectionsShop] = useState<Shop | null>(null);
   const [flyToUserLocation, setFlyToUserLocation] = useState(false);
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
+  const [directionsMinimized, setDirectionsMinimized] = useState(false);
   // Load mapType from localStorage on mount, default to 'street'
   const [mapType, setMapType] = useState<'street' | 'satellite'>(() => {
     if (typeof window !== 'undefined') {
@@ -192,6 +180,7 @@ function MapPageContent() {
   const handleCloseDirections = useCallback(() => {
     setShowDirectionsPanel(false);
     setDirectionsShop(null);
+    setDirectionsMinimized(false);
     clearRoute();
     
     // Remove shop param from URL so it doesn't re-trigger on refresh
@@ -376,7 +365,7 @@ function MapPageContent() {
 
               {/* Mobile: Radius + Sign up only */}
               <div className="flex lg:hidden items-center gap-2">
-                <div className="hidden sm:flex">
+                <div className="flex">
                   <RadiusControl
                     radius={radius}
                     onChange={(newRadius) => {
@@ -640,45 +629,77 @@ function MapPageContent() {
 
           {/* Directions Panel - Outside main to appear above map */}
           {showDirectionsPanel && route && (
-            <div className="absolute right-4 top-20 z-[9999] w-80 bg-[var(--card-bg)] border border-gray-200/20 rounded-xl shadow-xl p-4 max-h-[70vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200/20">
-                <h3 className="font-semibold text-[var(--text-dark)]">Directions</h3>
-                <button 
-                  onClick={handleCloseDirections}
-                  className="p-1 hover:bg-gray-500/10 rounded-full"
-                >
-                  <X className="h-5 w-5 text-[var(--text-gray)]" />
-                </button>
-              </div>
-              
-              {/* Route Summary */}
-              <div className="bg-[#667eea]/10 rounded-lg p-3 mb-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-[#667eea]">
-                    {directionsShop?.name}
-                  </span>
-                  <span className="text-[var(--text-gray)]">
-                    {routeLoading ? "Calculating..." : `${(route.totalDistance / 1000).toFixed(1)} km • ${Math.round(route.totalDuration / 60)} min`}
-                  </span>
+            <div className={`absolute z-[9999] bg-[var(--card-bg)] border border-gray-200/20 shadow-xl transition-all duration-300 ${
+              directionsMinimized
+                ? 'right-4 bottom-24 lg:right-4 lg:top-20 lg:bottom-auto w-auto rounded-full px-4 py-2'
+                : 'right-4 top-20 w-[calc(100%-2rem)] lg:w-80 max-h-[70vh] overflow-y-auto rounded-xl p-4'
+            }`}>
+              <div className={`flex items-center justify-between ${!directionsMinimized && 'mb-4 pb-3 border-b border-gray-200/20'}`}>
+                {!directionsMinimized && <h3 className="font-semibold text-[var(--text-dark)]">Directions</h3>}
+
+                {/* Compact summary when minimized */}
+                {directionsMinimized && (
+                  <div className="flex items-center gap-3 mr-2">
+                    <span className="font-medium text-[#667eea] text-sm">{directionsShop?.name}</span>
+                    <span className="text-xs text-[var(--text-gray)]">
+                      {routeLoading ? "..." : `${(route.totalDistance / 1000).toFixed(1)} km • ${Math.round(route.totalDuration / 60)} min`}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setDirectionsMinimized(!directionsMinimized)}
+                    className="p-1 hover:bg-gray-500/10 rounded-full lg:hidden"
+                    title={directionsMinimized ? "Expand" : "Minimize"}
+                  >
+                    {directionsMinimized ? (
+                      <ChevronUp className="h-5 w-5 text-[var(--text-gray)]" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-[var(--text-gray)]" />
+                    )}
+                  </button>
+                  <button
+                    onClick={handleCloseDirections}
+                    className="p-1 hover:bg-gray-500/10 rounded-full"
+                  >
+                    <X className="h-5 w-5 text-[var(--text-gray)]" />
+                  </button>
                 </div>
               </div>
 
-              {/* Turn-by-turn Steps */}
-              <div className="space-y-3">
-                {route.steps?.map((step, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-gray-500/10 rounded-full flex items-center justify-center text-xs font-medium text-[var(--text-gray)] shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-[var(--text-dark)]">{step.instruction}</p>
-                      <p className="text-xs text-[var(--text-gray)] mt-0.5">
-                        {(step.distance / 1000).toFixed(2)} km • {Math.round(step.duration / 60)} min
-                      </p>
+              {!directionsMinimized && (
+                <>
+                  {/* Route Summary */}
+                  <div className="bg-[#667eea]/10 rounded-lg p-3 mb-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-[#667eea]">
+                        {directionsShop?.name}
+                      </span>
+                      <span className="text-[var(--text-gray)]">
+                        {routeLoading ? "Calculating..." : `${(route.totalDistance / 1000).toFixed(1)} km • ${Math.round(route.totalDuration / 60)} min`}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Turn-by-turn Steps */}
+                  <div className="space-y-3">
+                    {route.steps?.map((step, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-gray-500/10 rounded-full flex items-center justify-center text-xs font-medium text-[var(--text-gray)] shrink-0">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-[var(--text-dark)]">{step.instruction}</p>
+                          <p className="text-xs text-[var(--text-gray)] mt-0.5">
+                            {(step.distance / 1000).toFixed(2)} km • {Math.round(step.duration / 60)} min
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
       </div>

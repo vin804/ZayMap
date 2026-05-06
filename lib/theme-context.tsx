@@ -8,9 +8,15 @@ interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
+  _isRealProvider: boolean;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "light",
+  toggleTheme: () => {},
+  setTheme: () => {},
+  _isRealProvider: false,
+});
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
@@ -48,13 +54,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeState(newTheme);
   };
 
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
+  const value = {
+    theme,
+    toggleTheme,
+    setTheme,
+    _isRealProvider: true,
+  };
 
+  // During SSR, render children with a default context to prevent errors
+  // After hydration, the real provider value takes over
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
@@ -62,7 +72,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
+  if (!context._isRealProvider && typeof window !== "undefined") {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
