@@ -28,11 +28,27 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const lastFetchLocation = useRef<{ lat: number; lon: number } | null>(null);
+  const lastRadiusRef = useRef<number>(radiusKm);
+  const lastUserLatRef = useRef<number>(userLat);
+  const lastUserLonRef = useRef<number>(userLon);
+  const isFirstLoad = useRef(true);
+
+  // Use refs for the rapidly changing GPS coordinates to avoid recreating fetchShops
+  const userLatRef = useRef(userLat);
+  const userLonRef = useRef(userLon);
+  const radiusKmRef = useRef(radiusKm);
+  userLatRef.current = userLat;
+  userLonRef.current = userLon;
+  radiusKmRef.current = radiusKm;
 
   const fetchShops = useCallback(async (force = false) => {
+    const currentLat = userLatRef.current;
+    const currentLon = userLonRef.current;
+    const currentRadius = radiusKmRef.current;
+
     // Validate user location
-    if (!userLat || !userLon || isNaN(userLat) || isNaN(userLon)) {
-      console.log("[useShopsNearby] Invalid user location:", userLat, userLon);
+    if (!currentLat || !currentLon || isNaN(currentLat) || isNaN(currentLon)) {
+      console.log("[useShopsNearby] Invalid user location:", currentLat, currentLon);
       setError("Unable to get your location. Please enable location services.");
       setLoading(false);
       return;
@@ -41,8 +57,8 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
     // Skip refetch if user hasn't moved significantly (less than 100m) unless forced
     if (!force && lastFetchLocation.current) {
       const distanceMoved = calculateDistance(
-        userLat,
-        userLon,
+        currentLat,
+        currentLon,
         lastFetchLocation.current.lat,
         lastFetchLocation.current.lon
       );
@@ -56,7 +72,7 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
     setError(null);
 
     try {
-      console.log(`[useShopsNearby] Fetching shops for location (${userLat}, ${userLon}) with radius ${radiusKm}km`);
+      console.log(`[useShopsNearby] Fetching shops for location (${currentLat}, ${currentLon}) with radius ${currentRadius}km`);
       
       // Use search API to get shops with calculated ratings
       const response = await fetch('/api/shops/search', {
@@ -65,10 +81,10 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
         body: JSON.stringify({
           query: '',
           categories: [],
-          radius_km: radiusKm,
+          radius_km: currentRadius,
           user_location: {
-            latitude: userLat,
-            longitude: userLon,
+            latitude: currentLat,
+            longitude: currentLon,
           },
         }),
       });
@@ -107,25 +123,58 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
         phone: shop.phone,
       }));
 
-      console.log(`[useShopsNearby] Found ${shopsData.length} shops within ${radiusKm}km`);
-      setShops(shopsData);
-      lastFetchLocation.current = { lat: userLat, lon: userLon };
+      // Client-side safety filter: only include shops within the requested radius
+      const filteredShops = shopsData.filter((shop: Shop) => {
+        if (shop.distance === undefined) return false; // exclude shops with no distance data
+        return shop.distance <= currentRadius;
+      });
+
+      console.log(`[useShopsNearby] Found ${shopsData.length} shops from API, ${filteredShops.length} within ${currentRadius}km radius`);
+      setShops(filteredShops);
+      lastFetchLocation.current = { lat: currentLat, lon: currentLon };
     } catch (err) {
       console.error("Error fetching shops:", err);
       setError("Failed to load shops. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [userLat, userLon, radiusKm]);
+  }, []); // Empty deps - we use refs for all mutable values
 
+  // Store fetchShops in a ref so effects don't depend on the function reference
+  const fetchShopsRef = useRef(fetchShops);
+  fetchShopsRef.current = fetchShops;
+
+  // Separate effect for radius changes - trigger refetch immediately
   useEffect(() => {
-    // Debounce the fetch to avoid excessive queries
-    const timeoutId = setTimeout(() => {
-      fetchShops(false); // Don't force - check distance threshold
-    }, 200);
+    if (lastRadiusRef.current !== radiusKm && !isFirstLoad.current) {
+      lastRadiusRef.current = radiusKm;
+      fetchShopsRef.current(true); // Force refetch on radius change
+    }
+  }, [radiusKm]); // only depend on the actual changing value
 
-    return () => clearTimeout(timeoutId);
-  }, [fetchShops]);
+  // Separate effect for location changes - only when moved significantly
+  useEffect(() => {
+    const distanceMoved = calculateDistance(
+      userLat,
+      userLon,
+      lastUserLatRef.current,
+      lastUserLonRef.current
+    );
+    lastUserLatRef.current = userLat;
+    lastUserLonRef.current = userLon;
+
+    // Only trigger fetch if moved more than 100m (or first load)
+    if (isFirstLoad.current || distanceMoved >= 0.1) {
+      isFirstLoad.current = false;
+      
+      // Debounce the fetch to avoid excessive queries
+      const timeoutId = setTimeout(() => {
+        fetchShopsRef.current(false);
+      }, 200);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [userLat, userLon]); // only depend on the actual changing values
 
   const retry = useCallback(() => {
     fetchShops(true); // Force refetch on manual retry

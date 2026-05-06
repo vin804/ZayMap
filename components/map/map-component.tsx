@@ -84,6 +84,7 @@ export function MapComponent({
   const zoomRef = useRef<number>(14); // Track current zoom level
   const baseTileLayerRef = useRef<unknown>(null);
   const labelsTileLayerRef = useRef<unknown>(null);
+  const lastPannedLocationRef = useRef<{ lat: number; lon: number } | null>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // Load Leaflet dynamically
@@ -272,17 +273,23 @@ export function MapComponent({
     };
   }, [leafletLoaded, userLat, userLon]);
 
-  // Update map view when user location changes
+  // Update map view when user location changes - only if moved significantly (>100m)
   useEffect(() => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
 
     const map = mapInstanceRef.current as { panTo: (coords: [number, number], options?: { animate?: boolean }) => void; getZoom: () => number };
 
-    // Pan map to user location without changing zoom (only if not default)
+    // Only pan if not default location
     const isDefaultLocation =
       userLat === (YANGON_COORDINATES as [number, number])[0] &&
       userLon === (YANGON_COORDINATES as [number, number])[1];
     if (!isDefaultLocation && userLat && userLon) {
+      // Use lastPannedLocation ref to avoid excessive panning from GPS jitter
+      if (lastPannedLocationRef.current) {
+        const dist = calculateDistance(userLat, userLon, lastPannedLocationRef.current.lat, lastPannedLocationRef.current.lon);
+        if (dist < 0.1) return; // Less than 100m - skip panning
+      }
+      lastPannedLocationRef.current = { lat: userLat, lon: userLon };
       map.panTo([userLat, userLon]); // Use panTo instead of setView to preserve zoom
     }
   }, [userLat, userLon, leafletLoaded]);
@@ -430,9 +437,21 @@ export function MapComponent({
     };
   }, [userLat, userLon, radius, leafletLoaded]);
 
-  // Update shop markers
+  // Track the last rendered shop IDs to avoid unnecessary marker recreation
+  const lastShopIdsRef = useRef<string>("");
+
+  // Update shop markers - only recreates when shop IDs actually change
   useEffect(() => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
+
+    // Compute current shop IDs string for comparison
+    const currentShopIds = shops.map(s => s.shop_id).sort().join(",");
+    
+    // Skip if shops haven't actually changed (same shop IDs)
+    if (currentShopIds === lastShopIdsRef.current && !highlightedShopId) return;
+    
+    // Update the ref
+    lastShopIdsRef.current = currentShopIds;
 
     const L: typeof import("leaflet") = window.L || require("leaflet");
     const map = mapInstanceRef.current as L.Map;
@@ -722,4 +741,19 @@ function getEmojiForCategory(category: string): string {
     Other: "🏪",
   };
   return emojis[category] || "🏪";
+}
+
+// Haversine formula to calculate distance between two coordinates in kilometers
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
