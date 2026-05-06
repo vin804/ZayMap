@@ -303,18 +303,18 @@ export default function SearchPage() {
         </div>
 
         {/* Radius Selector */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2 max-w-2xl">
+        <div className="mb-6 px-4">
+          <div className="flex items-center justify-between mb-2 max-w-2xl mx-auto">
             <h3 className="text-sm font-medium text-[var(--text-dark)]">Search Radius</h3>
             <span className="text-sm font-semibold text-[#667eea]">{radiusKm} km</span>
           </div>
-          <div className="flex gap-2 max-w-2xl mx-auto justify-center">
+          <div className="flex gap-2 max-w-2xl mx-auto overflow-x-auto pb-2 scrollbar-hide">
             {RADIUS_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setRadiusKm(option.value)}
                 className={`
-                  flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all shadow-sm
+                  flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all shadow-sm whitespace-nowrap
                   ${radiusKm === option.value
                     ? "bg-[#667eea] text-white shadow-md border border-[#667eea]"
                     : "bg-[var(--card-bg)] text-[var(--text-gray)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] hover:shadow-md"

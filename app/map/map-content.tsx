@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthGuard } from "@/components/auth-guard";
 import { MapComponent } from "@/components/map/map-component";
@@ -193,31 +193,34 @@ function MapPageContent() {
   }, [clearRoute, searchParams, router]);
 
   // Auto-trigger directions when shop param is present and shops are loaded
+  const currentShopId = searchParams.get("shop");
   useEffect(() => {
-    const shopId = searchParams.get("shop");
-    if (shopId && nearbyShops.length > 0 && userLat && userLon && !hasAutoTriggeredRef.current) {
-      const targetShop = nearbyShops.find(s => s.shopId === shopId);
+    if (currentShopId && nearbyShops.length > 0 && userLat && userLon && !hasAutoTriggeredRef.current) {
+      const targetShop = nearbyShops.find(s => s.shopId === currentShopId);
       if (targetShop) {
         hasAutoTriggeredRef.current = true;
         handleGetDirections(targetShop);
       }
     }
-  }, [searchParams, nearbyShops, userLat, userLon, handleGetDirections]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentShopId, nearbyShops.length, userLat, userLon]);
 
-  const displayedShops = searchQuery.trim()
-    ? searchResults
-    : nearbyShops.map((shop) => ({
-        shop_id: shop.shopId,
-        name: shop.name,
-        category: shop.category,
-        latitude: shop.latitude,
-        longitude: shop.longitude,
-        distance_km: shop.distance ?? 0,
-        rating: shop.rating ?? 0,
-        review_count: 0,
-        response_speed_score: 80,
-        delivery_available: false,
-      }));
+  // Memoize displayedShops to prevent map re-renders
+  const displayedShops = useMemo(() => {
+    if (searchQuery.trim()) return searchResults;
+    return nearbyShops.map((shop) => ({
+      shop_id: shop.shopId,
+      name: shop.name,
+      category: shop.category,
+      latitude: shop.latitude,
+      longitude: shop.longitude,
+      distance_km: shop.distance ?? 0,
+      rating: shop.rating ?? 0,
+      review_count: 0,
+      response_speed_score: 80,
+      delivery_available: false,
+    }));
+  }, [searchQuery, searchResults, nearbyShops]);
 
   const isLoading = searchQuery.trim() ? searchLoading : shopsLoading;
   const error = searchQuery.trim() ? searchError : shopsError;
@@ -247,76 +250,77 @@ function MapPageContent() {
               <h1 className="text-xl font-semibold gradient-text">ZayMap</h1>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* Theme Toggle Button */}
               <button
                 onClick={toggleTheme}
-                className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
                 title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {theme === "dark" ? (
-                  <Sun className="h-5 w-5 text-amber-500" />
+                  <Sun className="h-4 w-4 text-amber-500" />
                 ) : (
-                  <Moon className="h-5 w-5 text-[#667eea]" />
+                  <Moon className="h-4 w-4 text-[#667eea]" />
                 )}
               </button>
 
-              {/* Saved Button - always visible, requires auth */}
+              {/* Saved Button - icon only on mobile */}
               <button
                 onClick={() => {
                   if (!checkAuth(user, "view saved products")) return;
                   router.push("/saved");
                 }}
-                className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-2.5 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
                 title="Saved Products"
               >
                 <Bookmark className="h-4 w-4 text-[#667eea]" />
-                <span>Saved</span>
+                <span className="hidden lg:inline">Saved</span>
               </button>
 
-              {/* Followed Shops Button - always visible, requires auth */}
+              {/* Followed Shops Button - icon only on mobile */}
               <button
                 onClick={() => {
                   if (!checkAuth(user, "view followed shops")) return;
                   router.push("/followed-shops");
                 }}
-                className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-4 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-2.5 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
                 title="Followed Shops"
               >
                 <Star className="h-4 w-4 text-[#667eea]" />
-                <span>Following</span>
+                <span className="hidden lg:inline">Following</span>
               </button>
 
-              {/* My Shop Button - always visible when has shop, requires auth */}
+              {/* My Shop Button - icon only on mobile */}
               {!isCheckingShop && hasShop && (
                 <button
                   onClick={() => {
                     if (!checkAuth(user, "access my shop")) return;
                     router.push("/shop/dashboard");
                   }}
-                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
                   title="My Shop Dashboard"
                 >
                   <Store className="h-4 w-4" />
-                  <span>My Shop</span>
+                  <span className="hidden lg:inline">My Shop</span>
                 </button>
               )}
 
-              {/* Register Shop Button - always visible, requires auth */}
+              {/* Register Shop Button - icon only on mobile */}
               {!isCheckingShop && !hasShop && (
                 <button
                   onClick={() => {
                     if (!checkAuth(user, "register a shop")) return;
                     router.push("/onboarding/shop-registration");
                   }}
-                  className="flex items-center gap-2 rounded-lg border-2 border-[#667eea] text-[#667eea] px-4 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
+                  className="flex items-center gap-1.5 rounded-lg border-2 border-[#667eea] text-[#667eea] px-2.5 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
+                  title="Register Shop"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Register Shop</span>
+                  <span className="hidden lg:inline">Register</span>
                 </button>
               )}
               
-              {/* Radius Control */}
+              {/* Radius Control - hidden on mobile */}
               <div className="hidden sm:flex">
                 <RadiusControl
                   radius={radius}
@@ -333,36 +337,36 @@ function MapPageContent() {
               {user ? (
                 <>
                   <Link
-                    href="/auth/profile"
-                    className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex hover:text-[#667eea] transition-colors cursor-pointer"
+                    href="/profile"
+                    className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
                   >
                     <User className="h-4 w-4" />
-                    <span className="max-w-[100px] truncate">{user?.displayName}</span>
+                    <span className="hidden lg:inline max-w-[80px] truncate">{user?.displayName}</span>
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
+                    className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-2.5 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
                     title="Logout"
                   >
                     <LogOut className="h-4 w-4" />
-                    <span className="hidden sm:inline">Log out</span>
+                    <span className="hidden lg:inline">Log out</span>
                   </button>
                 </>
               ) : (
                 <>
                   <Link
                     href="/auth"
-                    className="hidden items-center gap-2 text-sm text-[var(--text-gray)] sm:flex hover:text-[#667eea] transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
                   >
                     <User className="h-4 w-4" />
-                    <span>Log in</span>
+                    <span className="hidden lg:inline">Log in</span>
                   </Link>
                   <Link
                     href="/auth"
-                    className="flex items-center gap-2 rounded-lg bg-[#667eea] text-white px-4 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
+                    className="flex items-center gap-1.5 rounded-lg bg-[#667eea] text-white px-2.5 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
                   >
                     <User className="h-4 w-4" />
-                    <span>Sign up</span>
+                    <span className="hidden lg:inline">Sign up</span>
                   </Link>
                 </>
               )}
