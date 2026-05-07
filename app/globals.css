@@ -50,8 +50,15 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Smooth transitions for all themed elements */
-* {
+/* Smooth transitions for theme-affected elements */
+body,
+button,
+input,
+select,
+textarea,
+.card,
+.gradient-text,
+.gradient-text * {
   transition-property: background-color, border-color, color, fill, stroke;
   transition-duration: 200ms;
   transition-timing-function: ease;

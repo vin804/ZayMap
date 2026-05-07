@@ -209,12 +209,9 @@ function MapPageContent() {
   }, [currentShopId, nearbyShops.length, userLat, userLon]);
 
   // Memoize displayedShops to prevent map re-renders
-  // Limit to nearest 50 shops to prevent Leaflet performance issues with too many markers
   const displayedShops = useMemo(() => {
     if (searchQuery.trim()) return searchResults;
-    return nearbyShops
-      .slice(0, 50)
-      .map((shop) => ({
+    return nearbyShops.map((shop) => ({
         shop_id: shop.shopId,
         name: shop.name,
         category: shop.category,
