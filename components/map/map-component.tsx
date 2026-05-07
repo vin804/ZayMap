@@ -171,8 +171,8 @@ export function MapComponent({
     map.createPane("myanmarMask");
     const maskPane = map.getPane("myanmarMask");
     if (maskPane) {
-      // Keep the mask below marker icons so shop pins remain visible.
-      maskPane.style.zIndex = "150";
+      // zIndex must be higher than tilePane (200) to show above tiles, but below shopMarkers (650)
+      maskPane.style.zIndex = "250";
       maskPane.style.pointerEvents = "none";
     }
 
