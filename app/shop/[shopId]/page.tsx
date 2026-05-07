@@ -668,7 +668,7 @@ export default function ShopDetailPage() {
           
           {/* Shop Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
               <div>
                 <p className="text-sm text-[var(--text-dark)] mb-1">
                   {CATEGORY_LABELS[language][shop.category] || shop.category}
@@ -676,7 +676,7 @@ export default function ShopDetailPage() {
                 <h2 className="text-lg sm:text-xl font-bold text-[var(--text-dark)] mb-1">{displayName}</h2>
                 
                 {/* Rating */}
-                <div className="flex flex-wrap items-center gap-2 mb-1">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mb-1">
                   <div className="flex items-center">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star 
@@ -692,7 +692,7 @@ export default function ShopDetailPage() {
                 </div>
                 
                 {/* Response Time & Delivery */}
-                <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-dark)]">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 text-sm text-[var(--text-dark)]">
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     <span>{t.respondsIn} &lt;{shop.response_time_hours} {t.hours}</span>
@@ -739,7 +739,7 @@ export default function ShopDetailPage() {
               </div>
               
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:self-end">
                 <button 
                   onClick={() => {
                     if (!checkAuth(user, "follow this shop")) return;
