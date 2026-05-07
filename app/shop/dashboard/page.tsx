@@ -743,35 +743,37 @@ export default function ShopDashboardPage() {
               <h4 className="text-sm font-medium text-[var(--text-dark)] mb-3">
                 Add New Category
               </h4>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={newCategory.name}
                   onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Category name (EN)"
-                  className="flex-1 px-3 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-sm text-[var(--text-dark)]"
+                  className="w-full sm:flex-1 px-3 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-sm text-[var(--text-dark)]"
                 />
                 <input
                   type="text"
                   value={newCategory.name_mm}
                   onChange={(e) => setNewCategory(prev => ({ ...prev, name_mm: e.target.value }))}
                   placeholder="Category name (MM)"
-                  className="flex-1 px-3 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-sm text-[var(--text-dark)]"
+                  className="w-full sm:flex-1 px-3 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-sm text-[var(--text-dark)]"
                 />
-                <input
-                  type="text"
-                  value={newCategory.icon}
-                  onChange={(e) => setNewCategory(prev => ({ ...prev, icon: e.target.value }))}
-                  placeholder="📦"
-                  className="w-14 px-2 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-center text-sm"
-                />
-                <button
-                  onClick={addCategory}
-                  disabled={!newCategory.name.trim() && !newCategory.name_mm.trim()}
-                  className="px-4 py-2 bg-[#667eea] text-white rounded-lg text-sm font-medium hover:bg-[#5a67d8] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategory.icon}
+                    onChange={(e) => setNewCategory(prev => ({ ...prev, icon: e.target.value }))}
+                    placeholder="📦"
+                    className="w-14 px-2 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-center text-sm"
+                  />
+                  <button
+                    onClick={addCategory}
+                    disabled={!newCategory.name.trim() && !newCategory.name_mm.trim()}
+                    className="px-4 py-2 bg-[#667eea] text-white rounded-lg text-sm font-medium hover:bg-[#5a67d8] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-[var(--text-gray)] mt-2">
                 At least one name (EN or MM) is required. Default icon is 📦.
