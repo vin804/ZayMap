@@ -148,6 +148,8 @@ const TRANSLATIONS = {
     reviewOptional: "Review (Optional)",
     submitReview: "Submit Review",
     submitting: "Submitting...",
+    selectRating: "Please select a rating",
+    reviewError: "Failed to submit review. Please try again.",
     all: "All",
     featuredProducts: "Featured Products",
     viewAll: "View All",
@@ -199,6 +201,8 @@ const TRANSLATIONS = {
     reviewOptional: "သုံးသပ်ချက် (မဖြစ်မနေ မဟုတ်)",
     submitReview: "ပို့စ်တင်",
     submitting: "ပို့စ်တင်နေသည်...",
+    selectRating: "အဆင့်ရွေးပါ",
+    reviewError: "သုံးသပ်ချက်တင်မှု မအောင်မြင်ပါ။ ထပ်စမ်းကြည့်ပါ။",
     all: "အားလုံး",
     featuredProducts: "အထူးပစ္စည်းများ",
     viewAll: "အားလုံးကြည့်",
@@ -272,6 +276,7 @@ export default function ShopDetailPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   
   const { user } = useAuth();
   const reviewerName = user?.displayName || user?.email?.split('@')[0] || "Anonymous";
@@ -450,6 +455,49 @@ export default function ShopDetailPage() {
     const newLang = language === "en" ? "my" : "en";
     setLanguage(newLang);
     localStorage.setItem("preferred_language", newLang);
+  };
+
+  const handleReview = async () => {
+    setReviewError(null);
+
+    if (reviewRating === 0) {
+      setReviewError(t.selectRating);
+      return;
+    }
+
+    setReviewLoading(true);
+
+    try {
+      const res = await fetch(`/api/shops/${shopId}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewer_name: reviewerName,
+          rating: reviewRating,
+          comment: reviewText,
+          review_type: "product_review",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || t.reviewError);
+      }
+
+      setReviewText("");
+      setReviewRating(5);
+      setShowReviewModal(false);
+
+      const reviewsRes = await fetch(`/api/shops/${shopId}/reviews?limit=5`);
+      if (reviewsRes.ok) {
+        const reviewsData = await reviewsRes.json();
+        setReviews(reviewsData.data.reviews);
+      }
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : t.reviewError);
+    } finally {
+      setReviewLoading(false);
+    }
   };
 
   // Fetch shop data
