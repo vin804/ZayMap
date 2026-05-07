@@ -209,20 +209,23 @@ function MapPageContent() {
   }, [currentShopId, nearbyShops.length, userLat, userLon]);
 
   // Memoize displayedShops to prevent map re-renders
+  // Limit to nearest 50 shops to prevent Leaflet performance issues with too many markers
   const displayedShops = useMemo(() => {
     if (searchQuery.trim()) return searchResults;
-    return nearbyShops.map((shop) => ({
-      shop_id: shop.shopId,
-      name: shop.name,
-      category: shop.category,
-      latitude: shop.latitude,
-      longitude: shop.longitude,
-      distance_km: shop.distance ?? 0,
-      rating: shop.rating ?? 0,
-      review_count: 0,
-      response_speed_score: 80,
-      delivery_available: false,
-    }));
+    return nearbyShops
+      .slice(0, 50)
+      .map((shop) => ({
+        shop_id: shop.shopId,
+        name: shop.name,
+        category: shop.category,
+        latitude: shop.latitude,
+        longitude: shop.longitude,
+        distance_km: shop.distance ?? 0,
+        rating: shop.rating ?? 0,
+        review_count: 0,
+        response_speed_score: 80,
+        delivery_available: false,
+      }));
   }, [searchQuery, searchResults, nearbyShops]);
 
   const isLoading = searchQuery.trim() ? searchLoading : shopsLoading;
