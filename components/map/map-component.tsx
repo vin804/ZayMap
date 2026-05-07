@@ -172,7 +172,15 @@ export function MapComponent({
     const maskPane = map.getPane("myanmarMask");
     if (maskPane) {
       // Keep the mask below marker icons so shop pins remain visible.
-      maskPane.style.zIndex = "250";
+      maskPane.style.zIndex = "150";
+      maskPane.style.pointerEvents = "none";
+    }
+
+    // Create a dedicated pane for shop markers so they render above overlay layers.
+    map.createPane("shopMarkers");
+    const shopMarkerPane = map.getPane("shopMarkers");
+    if (shopMarkerPane) {
+      shopMarkerPane.style.zIndex = "650";
     }
 
     // Create dark mask covering world with hole for Myanmar (actual border shape)
@@ -498,8 +506,11 @@ export function MapComponent({
         iconAnchor: [20, 20],
       });
 
-      const marker = L.marker([shop.latitude, shop.longitude], { icon: shopIcon }).addTo(map);
-      
+      const marker = L.marker([shop.latitude, shop.longitude], { icon: shopIcon, pane: "shopMarkers" }).addTo(map);
+      if (typeof (marker as any).bringToFront === "function") {
+        (marker as any).bringToFront();
+      }
+
       // Add popup
       marker.bindPopup(`
         <div style="text-align: center;">
