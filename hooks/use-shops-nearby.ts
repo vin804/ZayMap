@@ -31,7 +31,6 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
   const lastRadiusRef = useRef<number>(radiusKm);
   const lastUserLatRef = useRef<number>(userLat);
   const lastUserLonRef = useRef<number>(userLon);
-  const isFirstLoad = useRef(true);
 
   // Use refs for the rapidly changing GPS coordinates to avoid recreating fetchShops
   const userLatRef = useRef(userLat);
@@ -144,11 +143,12 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
   const fetchShopsRef = useRef(fetchShops);
   fetchShopsRef.current = fetchShops;
 
-  // Separate effect for radius changes - trigger refetch immediately
+  // Trigger initial fetch and radius changes - force refetch when radius changes
   useEffect(() => {
-    if (lastRadiusRef.current !== radiusKm && !isFirstLoad.current) {
+    const hasFetchedBefore = lastFetchLocation.current !== null;
+    if (!hasFetchedBefore || lastRadiusRef.current !== radiusKm) {
       lastRadiusRef.current = radiusKm;
-      fetchShopsRef.current(true); // Force refetch on radius change
+      fetchShopsRef.current(true);
     }
   }, [radiusKm]); // only depend on the actual changing value
 
@@ -163,10 +163,9 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
     lastUserLatRef.current = userLat;
     lastUserLonRef.current = userLon;
 
-    // Only trigger fetch if moved more than 100m (or first load)
-    if (isFirstLoad.current || distanceMoved >= 0.1) {
-      isFirstLoad.current = false;
-      
+    // Only trigger fetch if moved more than 100m, or if we've never fetched yet
+    const hasFetchedBefore = lastFetchLocation.current !== null;
+    if (!hasFetchedBefore || distanceMoved >= 0.1) {
       // Debounce the fetch to avoid excessive queries
       const timeoutId = setTimeout(() => {
         fetchShopsRef.current(false);
