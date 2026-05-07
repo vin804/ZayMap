@@ -662,7 +662,7 @@ export default function ShopDetailPage() {
 
           <main className="max-w-7xl mx-auto px-4 pt-12 pb-6">
         {/* Shop Header Section */}
-        <div className="flex items-start gap-4 mb-6 pb-6 border-b border-[var(--border-subtle)]">
+        <div className="flex flex-col sm:flex-row items-start gap-4 mb-6 pb-6 border-b border-[var(--border-subtle)]">
           {/* Spacer for logo */}
           <div className="flex-shrink-0 w-24 sm:w-32" />
           
@@ -676,7 +676,7 @@ export default function ShopDetailPage() {
                 <h2 className="text-lg sm:text-xl font-bold text-[var(--text-dark)] mb-1">{displayName}</h2>
                 
                 {/* Rating */}
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <div className="flex items-center">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star 
@@ -692,7 +692,7 @@ export default function ShopDetailPage() {
                 </div>
                 
                 {/* Response Time & Delivery */}
-                <div className="flex items-center gap-4 text-sm text-[var(--text-dark)]">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-dark)]">
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     <span>{t.respondsIn} &lt;{shop.response_time_hours} {t.hours}</span>
@@ -704,7 +704,7 @@ export default function ShopDetailPage() {
                   
                   {/* Social Media Icons */}
                   {(shop.facebook || shop.tiktok) && (
-                    <div className="flex items-center gap-2 ml-2">
+                    <div className="flex items-center gap-2 ml-0 sm:ml-2">
                       {shop.facebook && (
                         <a 
                           href={shop.facebook.startsWith('http') ? shop.facebook : `https://${shop.facebook}`}
@@ -739,7 +739,7 @@ export default function ShopDetailPage() {
               </div>
               
               {/* Action Buttons */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <button 
                   onClick={() => {
                     if (!checkAuth(user, "follow this shop")) return;
@@ -754,7 +754,7 @@ export default function ShopDetailPage() {
                       setIsFollowing(true);
                     }
                   }}
-                  className={`px-4 py-2 border-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  className={`w-full sm:w-auto px-4 py-2 border-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
                     isFollowing 
                       ? "border-[#667eea] bg-[#667eea]/10 text-[#667eea]" 
                       : "border-gray-200/50 text-[var(--text-dark)] hover:border-gray-200"
@@ -765,7 +765,7 @@ export default function ShopDetailPage() {
                 </button>
                 <a 
                   href={`tel:${shop.phone}`}
-                  className="px-4 py-2 bg-[#667eea] text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center gap-2"
+                  className="w-full sm:w-auto px-4 py-2 bg-[#667eea] text-white rounded-lg font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
                 >
                   <Phone className="h-4 w-4" />
                   <span className="hidden sm:inline">{t.contactShop}</span>
