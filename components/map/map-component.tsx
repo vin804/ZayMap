@@ -171,7 +171,8 @@ export function MapComponent({
     map.createPane("myanmarMask");
     const maskPane = map.getPane("myanmarMask");
     if (maskPane) {
-      maskPane.style.zIndex = "650";
+      // Keep the mask below marker icons so shop pins remain visible.
+      maskPane.style.zIndex = "250";
     }
 
     // Create dark mask covering world with hole for Myanmar (actual border shape)
@@ -280,11 +281,13 @@ export function MapComponent({
 
     const map = mapInstanceRef.current as { panTo: (coords: [number, number], options?: { animate?: boolean }) => void; getZoom: () => number };
 
-    // Only pan if not default location
+    // Do not override an explicit initial center from the URL.
     const isDefaultLocation =
       userLat === (YANGON_COORDINATES as [number, number])[0] &&
       userLon === (YANGON_COORDINATES as [number, number])[1];
-    if (!isDefaultLocation && userLat && userLon) {
+    const shouldPanToUser = !initialCenter && !isDefaultLocation && userLat && userLon;
+
+    if (shouldPanToUser) {
       // Use lastPannedLocation ref to avoid excessive panning from GPS jitter
       if (lastPannedLocationRef.current) {
         const dist = calculateDistance(userLat, userLon, lastPannedLocationRef.current.lat, lastPannedLocationRef.current.lon);
@@ -293,7 +296,7 @@ export function MapComponent({
       lastPannedLocationRef.current = { lat: userLat, lon: userLon };
       map.panTo([userLat, userLon]); // Use panTo instead of setView to preserve zoom
     }
-  }, [userLat, userLon, leafletLoaded]);
+  }, [userLat, userLon, leafletLoaded, initialCenter]);
 
   // Fly to user location when button is clicked
   useEffect(() => {

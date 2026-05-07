@@ -93,33 +93,8 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
       }
       
       const result = await response.json();
-      let apiShops = result.data || [];
+      const apiShops = result.data || [];
       console.log(`[useShopsNearby] Fetched ${apiShops.length} shops from Search API`);
-
-      // If the user has selected a very small radius and no shops are available,
-      // fallback to a broader search so the map can still display available shops.
-      if (apiShops.length === 0 && currentRadius < 10000) {
-        console.log(`[useShopsNearby] No shops found inside ${currentRadius}km; falling back to broader search`);
-        const fallbackResponse = await fetch('/api/shops/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: '',
-            categories: [],
-            radius_km: 10000,
-            user_location: {
-              latitude: currentLat,
-              longitude: currentLon,
-            },
-          }),
-        });
-
-        if (fallbackResponse.ok) {
-          const fallbackResult = await fallbackResponse.json();
-          apiShops = fallbackResult.data || [];
-          console.log(`[useShopsNearby] Fetched ${apiShops.length} fallback shops from Search API`);
-        }
-      }
 
       // Convert API response to Shop format
       const shopsData: Shop[] = apiShops.map((shop: {
