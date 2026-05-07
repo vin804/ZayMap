@@ -128,9 +128,9 @@ function MapPageContent() {
     retry: retryLocation,
   } = useGeolocation();
 
-  // Use URL center if available, otherwise use user location
-  const effectiveUserLat = initialCenter?.lat ?? userLat;
-  const effectiveUserLon = initialCenter?.lng ?? userLon;
+  // Use actual user location for nearby shop search; initialCenter is only for map viewport
+  const effectiveUserLat = userLat;
+  const effectiveUserLon = userLon;
 
   // Nearby shops hook
   const { shops: nearbyShops, loading: shopsLoading, error: shopsError, retry: retryShops } =
@@ -183,10 +183,16 @@ function MapPageContent() {
     setDirectionsMinimized(false);
     clearRoute();
     
-    // Remove shop param from URL so it doesn't re-trigger on refresh
+    // Remove shop/lat/lng params from URL so they do not persist across refresh
     const params = new URLSearchParams(searchParams.toString());
-    if (params.has("shop")) {
-      params.delete("shop");
+    let updated = false;
+    ["shop", "lat", "lng", "name"].forEach((key) => {
+      if (params.has(key)) {
+        params.delete(key);
+        updated = true;
+      }
+    });
+    if (updated) {
       const newUrl = params.toString() ? `/map?${params.toString()}` : "/map";
       router.push(newUrl, { scroll: false });
     }
