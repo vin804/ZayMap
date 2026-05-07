@@ -288,7 +288,8 @@ export default function RenewProductsPage() {
                     const daysSinceUpdate = isValidDate 
                       ? Math.floor((Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24))
                       : Infinity; // Invalid dates are treated as "needs renew"
-                    const isRecentlyUpdated = isValidDate && daysSinceUpdate <= 7;
+                    const isFresh = isValidDate && daysSinceUpdate <= 1;
+                    const isRecent = isValidDate && daysSinceUpdate >= 2 && daysSinceUpdate <= 7;
 
                     return (
                       <div
@@ -333,11 +334,13 @@ export default function RenewProductsPage() {
                             <Clock className="h-3 w-3" />
                             <span>
                               {isValidDate ? (
-                                isRecentlyUpdated ? (
-                                  <span className="text-green-500 font-medium">Updated {getRelativeTime(lastUpdated.toISOString())}</span>
-                                ) : (
-                                  `Updated ${getRelativeTime(lastUpdated.toISOString())}`
-                                )
+                                <span className={
+                                  isFresh ? "text-green-500 font-medium" :
+                                  isRecent ? "text-orange-500 font-medium" :
+                                  "text-red-500 font-medium"
+                                }>
+                                  Updated {getRelativeTime(lastUpdated.toISOString())}
+                                </span>
                               ) : (
                                 <span className="text-gray-500">No update date</span>
                               )}
@@ -347,12 +350,16 @@ export default function RenewProductsPage() {
 
                         {/* Status Badge */}
                         <div className="flex-shrink-0">
-                          {isRecentlyUpdated ? (
+                          {isFresh ? (
                             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-lg font-medium">
                               Fresh
                             </span>
+                          ) : isRecent ? (
+                            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-lg font-medium">
+                              Recent
+                            </span>
                           ) : (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">
+                            <span className="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-lg font-medium">
                               Needs Renew
                             </span>
                           )}
