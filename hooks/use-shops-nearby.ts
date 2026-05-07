@@ -93,9 +93,33 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
       }
       
       const result = await response.json();
-      const apiShops = result.data || [];
-      
+      let apiShops = result.data || [];
       console.log(`[useShopsNearby] Fetched ${apiShops.length} shops from Search API`);
+
+      // If the user has selected a very small radius and no shops are available,
+      // fallback to a broader search so the map can still display available shops.
+      if (apiShops.length === 0 && currentRadius < 10000) {
+        console.log(`[useShopsNearby] No shops found inside ${currentRadius}km; falling back to broader search`);
+        const fallbackResponse = await fetch('/api/shops/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: '',
+            categories: [],
+            radius_km: 10000,
+            user_location: {
+              latitude: currentLat,
+              longitude: currentLon,
+            },
+          }),
+        });
+
+        if (fallbackResponse.ok) {
+          const fallbackResult = await fallbackResponse.json();
+          apiShops = fallbackResult.data || [];
+          console.log(`[useShopsNearby] Fetched ${apiShops.length} fallback shops from Search API`);
+        }
+      }
 
       // Convert API response to Shop format
       const shopsData: Shop[] = apiShops.map((shop: {
@@ -122,14 +146,10 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
         phone: shop.phone,
       }));
 
-      // Client-side safety filter: only include shops within the requested radius
-      const filteredShops = shopsData.filter((shop: Shop) => {
-        if (shop.distance === undefined) return false; // exclude shops with no distance data
-        return shop.distance <= currentRadius;
-      });
-
-      console.log(`[useShopsNearby] Found ${shopsData.length} shops from API, ${filteredShops.length} within ${currentRadius}km radius`);
-      setShops(filteredShops);
+      // Show all shops returned by the API. The map should display whatever is available,
+      // even if an extra radius filter on the client would reduce results further.
+      console.log(`[useShopsNearby] Found ${shopsData.length} shops from API`);
+      setShops(shopsData);
       lastFetchLocation.current = { lat: currentLat, lon: currentLon };
     } catch (err) {
       console.error("Error fetching shops:", err);

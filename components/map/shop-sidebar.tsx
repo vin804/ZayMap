@@ -62,7 +62,7 @@ export function ShopSidebar({
           Nearby Shops
         </h2>
         <p className="text-xs text-[var(--text-gray)]">
-          {shops.length} shop{shops.length !== 1 ? "s" : ""} within {radius} km
+          Showing {shops.length} shop{shops.length !== 1 ? "s" : ""} near you
         </p>
       </div>
 
