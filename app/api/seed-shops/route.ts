@@ -6,11 +6,46 @@
  */
 
 import { NextResponse } from "next/server";
-import { getDocs, collection, query, limit, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { getDocs, collection, query, doc, setDoc, deleteDoc, type Firestore } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 // Hpa Khant coordinates
 const HPA_KHANT = { lat: 25.6044, lng: 96.3070 };
+
+const TEST_SHOP_ID_PREFIXES = ["hk-", "test-", "sample-shop-", "shop-"];
+const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
+
+function isSampleOrTestShop(docSnap: any, data: any) {
+  const shopId = docSnap.id;
+  const ownerId = typeof data.owner_id === "string" ? data.owner_id : "";
+  const isTestId = TEST_SHOP_ID_PREFIXES.some((prefix) => shopId.startsWith(prefix));
+  const isTestOwner = TEST_OWNER_ID_PREFIXES.some((prefix) => ownerId.startsWith(prefix));
+
+  return (
+    isTestId ||
+    isTestOwner ||
+    data.isTestShop === true
+  );
+}
+
+async function deleteShopAndSubcollections(firestore: Firestore, shopId: string) {
+  try {
+    const productsSnapshot = await getDocs(collection(firestore, "shops", shopId, "products"));
+    for (const productDoc of productsSnapshot.docs) {
+      await deleteDoc(doc(firestore, "shops", shopId, "products", productDoc.id));
+    }
+
+    const reviewsSnapshot = await getDocs(collection(firestore, "shops", shopId, "reviews"));
+    for (const reviewDoc of reviewsSnapshot.docs) {
+      await deleteDoc(doc(firestore, "shops", shopId, "reviews", reviewDoc.id));
+    }
+
+    await deleteDoc(doc(firestore, "shops", shopId));
+  } catch (error) {
+    console.error(`Failed to delete shop ${shopId}:`, error);
+    throw error;
+  }
+}
 
 const LOCATIONS = [
   { lat: 25.6144, lng: 96.3170 },
@@ -42,47 +77,44 @@ export async function GET(request: Request) {
     const action = searchParams.get("action") || "list";
 
     const shopsRef = collection(db, "shops");
-    const snapshot = await getDocs(query(shopsRef, limit(100)));
+    const snapshot = await getDocs(query(shopsRef));
 
     if (action === "list") {
       const shops: any[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         shops.push({
-          id: doc.id,
+          id: docSnap.id,
           name: data.name,
           category: data.category,
           lat: data.location?.latitude || data.latitude,
           lng: data.location?.longitude || data.longitude,
-          isTest: doc.id.startsWith("hk-") || data.isTestShop,
+          isTest: isSampleOrTestShop(docSnap, data),
         });
       });
       return NextResponse.json({ count: shops.length, shops });
     }
 
     if (action === "delete" || action === "reset") {
-      // Delete test shops
+      // Delete sample/test shops and duplicates
       let deleted = 0;
-      const batch = writeBatch(db!);
-      
-      snapshot.forEach((docSnap) => {
+
+      for (const docSnap of snapshot.docs) {
         const data = docSnap.data();
-        const isTest = docSnap.id.startsWith("hk-") || docSnap.id.startsWith("test-") || data.isTestShop;
+        const isTest = isSampleOrTestShop(docSnap, data);
         const isDuplicate = data.name?.toLowerCase().includes("one star") && docSnap.id !== "3sPa1kDv6JcC2nEHeuJQOeL7Xl53";
-        
+
         if (isTest || isDuplicate) {
-          batch.delete(doc(db!, "shops", docSnap.id));
+          await deleteShopAndSubcollections(db, docSnap.id);
           deleted++;
         }
-      });
-      
-      await batch.commit();
+      }
 
       if (action === "delete") {
         return NextResponse.json({ 
           success: true, 
           deleted,
-          message: `Deleted ${deleted} test/duplicate shops` 
+          message: `Deleted ${deleted} sample/test shops and their subcollections.`
         });
       }
     }

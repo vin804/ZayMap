@@ -20,6 +20,16 @@ function getDb() {
 }
 
 // Shop category definitions with icons
+const TEST_SHOP_ID_PREFIXES = ["hk-", "test-", "sample-shop-", "shop-"];
+const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
+
+function isSampleShop(shopData: any, shopId: string) {
+  const ownerId = typeof shopData.owner_id === "string" ? shopData.owner_id : "";
+  const hasTestId = TEST_SHOP_ID_PREFIXES.some((prefix) => shopId.startsWith(prefix));
+  const hasTestOwner = TEST_OWNER_ID_PREFIXES.some((prefix) => ownerId.startsWith(prefix));
+  return hasTestId || hasTestOwner || shopData.isTestShop === true;
+}
+
 export const SHOP_CATEGORIES = [
   { id: "clothes", name: "Clothes", icon: "👕" },
   { id: "electronics", name: "Electronics", icon: "📱" },
@@ -143,7 +153,12 @@ export async function POST(request: NextRequest) {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      console.log(`[Search API] Processing shop: ${doc.id}, name: ${data.name}, location:`, data.location);
+      const shopId = doc.id;
+      if (isSampleShop(data, shopId)) {
+        console.log(`[Search API] Skipping sample/test shop: ${shopId}`);
+        return;
+      }
+      console.log(`[Search API] Processing shop: ${shopId}, name: ${data.name}, location:`, data.location);
       
       // Handle both GeoPoint location field and separate lat/lng fields
       const latitude = data.location?.latitude ?? data.latitude ?? 0;

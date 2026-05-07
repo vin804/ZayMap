@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getFirestore, doc, getDoc, collection, query as firestoreQuery, where, getDocs } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
 
+const TEST_SHOP_ID_PREFIXES = ["hk-", "test-", "sample-shop-", "shop-"];
+const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
+
+function isSampleShop(shopData: any, shopId: string) {
+  const ownerId = typeof shopData.owner_id === "string" ? shopData.owner_id : "";
+  const hasTestId = TEST_SHOP_ID_PREFIXES.some((prefix) => shopId.startsWith(prefix));
+  const hasTestOwner = TEST_OWNER_ID_PREFIXES.some((prefix) => ownerId.startsWith(prefix));
+  return hasTestId || hasTestOwner || shopData.isTestShop === true;
+}
+
 // Initialize Firebase within the route handler for server-side reliability
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -112,6 +122,12 @@ export async function GET(
     }
 
     const shopData = shopSnap.data();
+    if (isSampleShop(shopData, shopId)) {
+      return NextResponse.json(
+        { error: "Shop not found" },
+        { status: 404 }
+      );
+    }
     
     // Fetch ALL shop reviews and calculate rating (any review_type)
     const reviewsRef = collection(db, "reviews");
