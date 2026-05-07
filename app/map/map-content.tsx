@@ -222,6 +222,7 @@ function MapPageContent() {
         review_count: 0,
         response_speed_score: 80,
         delivery_available: false,
+        logo_url: shop.logoUrl,
       }));
   }, [searchQuery, searchResults, nearbyShops]);
 

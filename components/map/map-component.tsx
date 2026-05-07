@@ -17,6 +17,7 @@ interface MapShop {
   review_count: number;
   response_speed_score: number;
   delivery_available: boolean;
+  logo_url?: string;
 }
 
 interface RouteData {
@@ -466,7 +467,10 @@ export function MapComponent({
     const markerMap = new Map<string, unknown>();
     
     shops.forEach((shop) => {
-      const emoji = getEmojiForCategory(shop.category);
+      const logoUrl = shop.logo_url;
+      const logoHtml = logoUrl
+        ? `<img src="${logoUrl}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${getEmojiForCategory(shop.category)}'" />`
+        : getEmojiForCategory(shop.category);
       const shopIcon = L.divIcon({
         className: "shop-marker",
         html: `<div style="
@@ -482,9 +486,10 @@ export function MapComponent({
           box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
           transition: transform 0.2s, box-shadow 0.2s;
           cursor: pointer;
+          overflow: hidden;
         " onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 16px rgba(102, 126, 234, 0.4)'" 
            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)'">
-          ${emoji}
+          ${logoHtml}
         </div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
