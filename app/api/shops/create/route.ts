@@ -28,6 +28,7 @@ interface CreateShopRequest {
   facebook?: string;
   tiktok?: string;
   logo_url?: string;
+  image_urls?: string[];
   location: {
     lat: number;
     lng: number;
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
       facebook: body.facebook?.trim() || "",
       tiktok: body.tiktok?.trim() || "",
       logo_url: body.logo_url || "",
+      image_urls: body.image_urls || [],
       location: new GeoPoint(body.location.lat, body.location.lng),
       rating: 0,
       review_count: 0,
