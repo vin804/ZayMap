@@ -19,23 +19,26 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Initialize from the DOM class that the pre-hydration script already set
-  // This prevents a flash where React removes the class then re-adds it on mount
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof document !== "undefined") {
-      return document.documentElement.classList.contains("dark") ? "dark" : "light";
-    }
-    return "light";
-  });
+  const [theme, setThemeState] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
-  // Mark as mounted immediately since DOM state is already correct
+  // Read actual theme only on mount to avoid SSR/client mismatch
   useEffect(() => {
+    const root = document.documentElement;
+    const persistedTheme = localStorage.getItem("zaymap_theme");
+    const initialTheme = persistedTheme
+      ? (persistedTheme === "dark" ? "dark" : "light")
+      : window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+
+    setThemeState(initialTheme);
     setMounted(true);
   }, []);
 
   // Apply theme to document
   useEffect(() => {
+    if (!mounted) return;
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
@@ -43,7 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.remove("dark");
     }
     localStorage.setItem("zaymap_theme", theme);
-  }, [theme]);
+  }, [theme, mounted]);
 
   const toggleTheme = () => {
     setThemeState((prev) => (prev === "light" ? "dark" : "light"));

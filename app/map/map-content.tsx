@@ -57,20 +57,20 @@ function MapPageContent() {
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
   const [directionsMinimized, setDirectionsMinimized] = useState(false);
   // Load mapType from localStorage on mount, default to 'street'
-  const [mapType, setMapType] = useState<'street' | 'satellite'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('zaymap_map_type');
-      return saved === 'satellite' ? 'satellite' : 'street';
-    }
-    return 'street';
-  });
+  const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
   const hasAutoTriggeredRef = useRef(false);
   
+  // Load map type from localStorage on first client mount only
+  useEffect(() => {
+    const saved = localStorage.getItem('zaymap_map_type');
+    if (saved === 'satellite' || saved === 'street') {
+      setMapType(saved);
+    }
+  }, []);
+
   // Save mapType to localStorage when it changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('zaymap_map_type', mapType);
-    }
+    localStorage.setItem('zaymap_map_type', mapType);
   }, [mapType]);
 
   // Routing hook

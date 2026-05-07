@@ -31,6 +31,8 @@ interface Review {
   reviewer_name: string;
   rating: number;
   review_text: string;
+  helpful_count?: number;
+  unhelpful_count?: number;
   created_at: string;
 }
 
@@ -87,6 +89,8 @@ export async function POST(
       reviewer_name: reviewData.reviewer_name,
       rating: reviewData.rating,
       review_text: reviewData.review_text,
+      helpful_count: 0,
+      unhelpful_count: 0,
       created_at: new Date().toISOString(),
     };
 

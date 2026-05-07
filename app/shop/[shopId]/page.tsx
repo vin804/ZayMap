@@ -286,25 +286,41 @@ export default function ShopDetailPage() {
 
   const t = TRANSLATIONS[language];
 
+  const getVotesStorageKey = (uid?: string) => uid ? `shop_votes_${shopId}_${uid}` : null;
+
   // Auth guard for protected features
   const { checkAuth, AuthGuardModal } = useAuthGuard();
 
   // Load user votes from localStorage
   useEffect(() => {
-    const savedVotes = localStorage.getItem(`shop_votes_${shopId}`);
+    if (!user?.uid) {
+      setUserVotes({});
+      return;
+    }
+    const storageKey = getVotesStorageKey(user.uid);
+    const savedVotes = storageKey ? localStorage.getItem(storageKey) : null;
     if (savedVotes) {
       setUserVotes(JSON.parse(savedVotes));
+    } else {
+      setUserVotes({});
     }
-  }, [shopId]);
+  }, [shopId, user?.uid]);
 
   // Save user votes to localStorage
   const saveUserVotes = (votes: Record<string, 'helpful' | 'unhelpful'>) => {
     setUserVotes(votes);
-    localStorage.setItem(`shop_votes_${shopId}`, JSON.stringify(votes));
+    if (!user?.uid) return;
+    const storageKey = getVotesStorageKey(user.uid);
+    if (storageKey) {
+      localStorage.setItem(storageKey, JSON.stringify(votes));
+    }
   };
 
-  // Handle review helpful/unhelpful voting with toggle/switch logic - Optimized with useCallback
-  const handleVote = useCallback(async (reviewId: string, vote: 'helpful' | 'unhelpful') => {
+  // Handle review helpful/unhelpful voting with toggle/switch logic
+  const handleVote = async (reviewId: string, vote: 'helpful' | 'unhelpful') => {
+    if (!checkAuth(user, "vote on reviews")) {
+      return;
+    }
     const currentVote = userVotes[reviewId];
     
     // Optimistic update - update UI immediately
@@ -413,7 +429,7 @@ export default function ShopDetailPage() {
         console.error('Failed to vote:', err);
       }
     }
-  }, [userVotes, shopId]);
+  }
 
   // Load language preference and followed status from localStorage
   useEffect(() => {
@@ -1092,6 +1108,7 @@ export default function ShopDetailPage() {
             </div>
           </div>
         )}
+        <AuthGuardModal />
       </main>
     </div>
   );
@@ -1309,7 +1326,7 @@ const AmazonReviewCard = React.memo(function AmazonReviewCard({
         </div>
       </div>
       
-      <p className="text-sm text-[var(--text-gray)] mb-3">{review.review_text}</p>
+      <p className="text-sm text-[var(--text-gray)] mb-3">{review.review_text || review.comment}</p>
       
       {/* Was this helpful? */}
       <div className="flex items-center gap-2 pt-3 border-t border-gray-200/20">
@@ -1338,8 +1355,8 @@ const AmazonReviewCard = React.memo(function AmazonReviewCard({
         </button>
       </div>
       
-      {/* X people found this helpful - only show when Yes voted and count > 0 */}
-      {userVote === 'helpful' && (review.helpful_count || 0) > 0 && (
+      {/* X people found this helpful - show whenever at least one person found it helpful */}
+      {(review.helpful_count || 0) > 0 && (
         <p className="text-xs text-gray-500 mt-2">
           {review.helpful_count} {language === "en" ? "people found this helpful" : "ဦး သည် အကူအညီဖြစ်သည်ဟု ထင်မြင်သည်"}
         </p>

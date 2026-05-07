@@ -53,6 +53,8 @@ interface Review {
   reviewer_name: string;
   rating: number;
   review_text: string;
+  helpful_count?: number;
+  unhelpful_count?: number;
   created_at: string;
 }
 
@@ -154,6 +156,8 @@ export async function GET(
         reviewer_name: data.reviewer_name || "Anonymous",
         rating: data.rating || 0,
         review_text: data.review_text || data.comment || "",
+        helpful_count: data.helpful_count || 0,
+        unhelpful_count: data.unhelpful_count || 0,
         created_at: createdAt,
       };
       reviews.push(review);

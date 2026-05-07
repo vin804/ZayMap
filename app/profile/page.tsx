@@ -31,6 +31,7 @@ function ProfileContent() {
   const [message, setMessage] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [language, setLanguage] = useState<"en" | "my">("en");
 
   useEffect(() => {
     if (user) {
@@ -39,6 +40,19 @@ function ProfileContent() {
       setPhotoUrl(user.photoUrl || "");
     }
   }, [user]);
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem("preferred_language") as "en" | "my";
+    if (savedLang && (savedLang === "en" || savedLang === "my")) {
+      setLanguage(savedLang);
+    }
+  }, []);
+
+  const toggleLanguage = () => {
+    const newLang = language === "en" ? "my" : "en";
+    setLanguage(newLang);
+    localStorage.setItem("preferred_language", newLang);
+  };
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -156,14 +170,23 @@ function ProfileContent() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[var(--card-bg)] shadow-sm border-b border-gray-200/20">
         <div className="mx-auto max-w-4xl px-4 py-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 rounded-lg p-2 text-[var(--text-gray)] hover:bg-gray-500/10 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h1 className="text-xl font-semibold text-[var(--text-dark)]">My Profile</h1>
+            </div>
             <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 rounded-lg p-2 text-[var(--text-gray)] hover:bg-gray-500/10 transition-colors"
+              onClick={toggleLanguage}
+              className="rounded-lg border border-gray-200/20 bg-[var(--card-bg)] px-3 py-2 text-sm font-medium text-[var(--text-dark)] shadow-sm hover:bg-gray-500/10 transition-colors"
+              title={language === "en" ? "Switch to Myanmar" : "Switch to English"}
             >
-              <ArrowLeft className="h-5 w-5" />
+              {language === "en" ? "EN" : "MY"}
             </button>
-            <h1 className="text-xl font-semibold text-[var(--text-dark)]">My Profile</h1>
           </div>
         </div>
       </header>

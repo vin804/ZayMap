@@ -138,22 +138,38 @@ export default function ProductDetailPage() {
   const [userVotes, setUserVotes] = useState<Record<string, 'helpful' | 'unhelpful'>>({});
   const INITIAL_REVIEWS_COUNT = 4;
 
+  const getVotesStorageKey = (uid?: string) => uid ? `product_votes_${productId}_${uid}` : null;
+
   // Load user votes from localStorage
   useEffect(() => {
-    const savedVotes = localStorage.getItem(`product_votes_${productId}`);
+    if (!user?.uid) {
+      setUserVotes({});
+      return;
+    }
+    const storageKey = getVotesStorageKey(user.uid);
+    const savedVotes = storageKey ? localStorage.getItem(storageKey) : null;
     if (savedVotes) {
       setUserVotes(JSON.parse(savedVotes));
+    } else {
+      setUserVotes({});
     }
-  }, [productId]);
+  }, [productId, user?.uid]);
 
   // Save user votes to localStorage
   const saveUserVotes = (votes: Record<string, 'helpful' | 'unhelpful'>) => {
     setUserVotes(votes);
-    localStorage.setItem(`product_votes_${productId}`, JSON.stringify(votes));
+    if (!user?.uid) return;
+    const storageKey = getVotesStorageKey(user.uid);
+    if (storageKey) {
+      localStorage.setItem(storageKey, JSON.stringify(votes));
+    }
   };
 
   // Handle review helpful/unhelpful voting
   const handleVote = async (reviewId: string, vote: 'helpful' | 'unhelpful') => {
+    if (!checkAuth(user, "vote on reviews")) {
+      return;
+    }
     const currentVote = userVotes[reviewId];
     
     if (currentVote === vote) {
@@ -840,7 +856,7 @@ export default function ProductDetailPage() {
                       </div>
                       
                       {/* X people found this helpful */}
-                      {userVote === 'helpful' && (review.helpful_count || 0) > 0 && (
+                      {(review.helpful_count || 0) > 0 && (
                         <p className="text-xs text-[var(--text-gray)] mt-2">
                           {review.helpful_count} {language === "en" ? "people found this helpful" : "ဦး သည် အကူအညီဖြစ်သည်ဟု ထင်မြင်သည်"}
                         </p>

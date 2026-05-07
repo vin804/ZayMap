@@ -25,6 +25,9 @@ interface Review {
   reviewer_name: string;
   rating: number;
   comment: string;
+  review_text?: string;
+  helpful_count?: number;
+  unhelpful_count?: number;
   review_type: "responsiveness" | "delivery_quality" | "product_review";
   created_at: string;
 }
@@ -62,6 +65,9 @@ export async function GET(
           reviewer_name: data.reviewer_name || "Anonymous",
           rating: data.rating || 0,
           comment: data.comment || "",
+          review_text: data.comment || "",
+          helpful_count: data.helpful_count || 0,
+          unhelpful_count: data.unhelpful_count || 0,
           review_type: data.review_type || "product_review",
           created_at: data.created_at || new Date().toISOString(),
         };

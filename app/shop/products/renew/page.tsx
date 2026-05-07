@@ -33,6 +33,14 @@ export default function RenewProductsPage() {
   const [renewing, setRenewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [language, setLanguage] = useState<"en" | "my">("en");
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem("preferred_language") as "en" | "my";
+    if (savedLang && (savedLang === "en" || savedLang === "my")) {
+      setLanguage(savedLang);
+    }
+  }, []);
 
   // Fetch products
   useEffect(() => {
@@ -99,6 +107,17 @@ export default function RenewProductsPage() {
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     return `${diffDays} days ago`;
+  };
+
+  const translations = {
+    en: {
+      renewHeading: "What is Renew?",
+      renewBody: `Renewing a product updates its timestamp to show customers that the item is still in stock. The product will display as "updated today" or "updated X days ago" instead of its original upload date.`,
+    },
+    my: {
+      renewHeading: "ပြန်အသက်သွင်းခြင်း ဆိုသည်မှာ?",
+      renewBody: `ပစ္စည်းကို ပြန်အသက်သွင်းခြင်းသည် ၀ယ်သူများအား အရောင်းခင်းပေါ်တွင် ပစ္စည်းသည် သိုလှောင်ပြီး ထပ်မံ ရောင်းချနိုင်နေကြောင်း ပြသရန် အချိန်စာရင်းကို နောက်ဆုံးအပ်ဒိတ်ပေးခြင်းဖြစ်သည်။ ပစ္စည်းသည် မူလတင်သည့်ရက်မဟုတ်ဘဲ "ယနေ့အပ်ဒိတ်ပြီး" သို့မဟုတ် "X ရက်ကြာပြီ" ဟု ပြသမည်ဖြစ်သည်။`,
+    },
   };
 
   // Renew selected products
@@ -195,10 +214,9 @@ export default function RenewProductsPage() {
             <div className="flex items-start gap-3">
               <RefreshCw className="h-5 w-5 text-blue-500 mt-0.5" />
               <div>
-                <h3 className="font-medium text-blue-500">What is Renew?</h3>
+                <h3 className="font-medium text-blue-500">{translations[language].renewHeading}</h3>
                 <p className="text-sm text-blue-400 mt-1">
-                  Renewing a product updates its timestamp to show customers that the item is still in stock. 
-                  The product will display as "updated today" or "updated X days ago" instead of its original upload date.
+                  {translations[language].renewBody}
                 </p>
               </div>
             </div>
