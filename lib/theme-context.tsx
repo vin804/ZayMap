@@ -38,12 +38,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (!mounted) return;
 
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    localStorage.setItem("zaymap_theme", theme);
+
+    // Brief delay to allow previous paint to finish before removing transitions
+    // This prevents a white flash when toggling from dark→light caused by CSS
+    // custom properties changing before the browser can interpolate them
+    root.classList.add("disable-transitions");
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (theme === "dark") {
+          root.classList.add("dark");
+          root.style.colorScheme = "dark";
+        } else {
+          root.classList.remove("dark");
+          root.style.colorScheme = "light";
+        }
+        localStorage.setItem("zaymap_theme", theme);
+
+        // Re-enable transitions on the next frame after the theme class has been applied
+        requestAnimationFrame(() => {
+          root.classList.remove("disable-transitions");
+        });
+      });
+    });
   }, [theme, mounted]);
 
   const toggleTheme = () => {
