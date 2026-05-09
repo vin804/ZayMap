@@ -12,7 +12,7 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 import { useShopsNearby, Shop } from "@/hooks/use-shops-nearby";
 import { useShopSearch, SearchShop } from "@/hooks/use-shop-search";
 import { useRouting, RouteStep } from "@/hooks/use-routing";
-import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, ChevronUp, ChevronDown, Sun, Moon, Bookmark } from "lucide-react";
+import { LogOut, User, Menu, X, Store, Plus, Navigation, Loader2, Heart, Star, Crosshair, Layers, ChevronLeft, ChevronUp, ChevronDown, Sun, Moon, Bookmark, MapPin } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/lib/theme-context";
@@ -243,13 +243,13 @@ function MapPageContent() {
   return (
     <div className="flex h-screen flex-col bg-[var(--background)]">
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-[var(--card-bg)] border-b border-gray-200/20 px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            {/* Left: Hamburger + Logo */}
-            <div className="flex items-center gap-2">
+        <header className="sticky top-0 z-50 bg-[var(--card-bg)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)] px-4 py-2.5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Logo */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="rounded-lg p-2 hover:bg-gray-100 lg:hidden"
+                className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl hover:bg-[var(--border-subtle)] transition-colors"
               >
                 {sidebarOpen ? (
                   <X className="h-5 w-5 text-[var(--text-dark)]" />
@@ -257,74 +257,77 @@ function MapPageContent() {
                   <Menu className="h-5 w-5 text-[var(--text-dark)]" />
                 )}
               </button>
-              <h1 className="text-xl font-semibold gradient-text">ZayMap</h1>
+              <Link href="/map" className="flex items-center gap-2 group">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/30 transition-shadow">
+                  <MapPin className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-lg font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
+                  ZayMap
+                </span>
+              </Link>
             </div>
 
-            {/* Right side */}
+            {/* Center: Actions */}
+            <div className="hidden lg:flex items-center gap-1">
+              <button
+                onClick={() => {
+                  if (!checkAuth(user, "view saved products")) return;
+                  router.push("/saved");
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)] transition-all"
+                title="Saved Products"
+              >
+                <Bookmark className="h-4 w-4" />
+                <span>Saved</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!checkAuth(user, "view followed shops")) return;
+                  router.push("/followed-shops");
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)] transition-all"
+                title="Followed Shops"
+              >
+                <Star className="h-4 w-4" />
+                <span>Following</span>
+              </button>
+              
+              <div className="w-px h-5 bg-[var(--border-subtle)] mx-1" />
+              
+              {!isCheckingShop && hasShop && (
+                <button
+                  onClick={() => {
+                    if (!checkAuth(user, "access my shop")) return;
+                    router.push("/shop/dashboard");
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-[#667eea] bg-[#667eea]/10 hover:bg-[#667eea]/15 transition-all"
+                  title="My Shop Dashboard"
+                >
+                  <Store className="h-4 w-4" />
+                  <span>My Shop</span>
+                </button>
+              )}
+              {!isCheckingShop && !hasShop && (
+                <button
+                  onClick={() => {
+                    if (!checkAuth(user, "register a shop")) return;
+                    router.push("/onboarding/shop-registration");
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-[#667eea] to-[#764ba2] shadow-md shadow-purple-500/20 hover:shadow-lg hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  title="Register Shop"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Register</span>
+                </button>
+              )}
+            </div>
+
+            {/* Right: Radius + Auth + Theme */}
             <div className="flex items-center gap-2">
-              {/* Desktop: all buttons */}
-              <div className="hidden lg:flex items-center gap-2">
-                <button
-                  onClick={toggleTheme}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
-                  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {theme === "dark" ? (
-                    <Sun className="h-4 w-4 text-amber-500" />
-                  ) : (
-                    <Moon className="h-4 w-4 text-[#667eea]" />
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    if (!checkAuth(user, "view saved products")) return;
-                    router.push("/saved");
-                  }}
-                  className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
-                  title="Saved Products"
-                >
-                  <Bookmark className="h-4 w-4 text-[#667eea]" />
-                  <span>Saved</span>
-                </button>
-                <button
-                  onClick={() => {
-                    if (!checkAuth(user, "view followed shops")) return;
-                    router.push("/followed-shops");
-                  }}
-                  className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[var(--text-dark)] px-3 py-2 text-sm font-medium hover:bg-gray-500/10 hover:border-[var(--border-color)] transition-all"
-                  title="Followed Shops"
-                >
-                  <Star className="h-4 w-4 text-[#667eea]" />
-                  <span>Following</span>
-                </button>
-                {!isCheckingShop && hasShop && (
-                  <button
-                    onClick={() => {
-                      if (!checkAuth(user, "access my shop")) return;
-                      router.push("/shop/dashboard");
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all bg-[#667eea] text-white shadow-md hover:bg-[#5a67d8]"
-                    title="My Shop Dashboard"
-                  >
-                    <Store className="h-4 w-4" />
-                    <span>My Shop</span>
-                  </button>
-                )}
-                {!isCheckingShop && !hasShop && (
-                  <button
-                    onClick={() => {
-                      if (!checkAuth(user, "register a shop")) return;
-                      router.push("/onboarding/shop-registration");
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg border-2 border-[#667eea] text-[#667eea] px-3 py-2 text-sm font-medium transition-all hover:bg-[#667eea] hover:text-white"
-                    title="Register Shop"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Register</span>
-                  </button>
-                )}
-                <RadiusControl
+              <div className="hidden lg:block">
+                  <RadiusControl
                   radius={radius}
+                  max={100}
                   onChange={(newRadius) => {
                     setRadiusState(newRadius);
                     const params = new URLSearchParams(searchParams.toString());
@@ -332,49 +335,66 @@ function MapPageContent() {
                     router.push(`/map?${params.toString()}`, { scroll: false });
                   }}
                 />
+              </div>
+              
+              <div className="w-px h-5 bg-[var(--border-subtle)] hidden lg:block" />
+              
+              <button
+                onClick={toggleTheme}
+                className="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-gray)] hover:text-[var(--text-dark)] transition-all"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Moon className="h-4 w-4 text-[#667eea]" />
+                )}
+              </button>
+
+              <div className="hidden lg:flex items-center gap-1">
                 {user ? (
                   <>
                     <Link
                       href="/profile"
-                      className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)] transition-all"
                     >
-                      <User className="h-4 w-4" />
-                      <span className="max-w-[80px] truncate">{user?.displayName}</span>
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[10px] text-white font-bold">
+                        {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
+                      </div>
+                      <span className="max-w-[80px] truncate">{user?.displayName || user?.email?.split("@")[0]}</span>
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-1.5 rounded-lg bg-[var(--card-bg)] border border-gray-200/20 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500/10 transition-all"
+                      className="flex items-center justify-center w-9 h-9 rounded-xl text-red-500 hover:bg-red-500/10 transition-all"
                       title="Logout"
                     >
                       <LogOut className="h-4 w-4" />
-                      <span>Log out</span>
                     </button>
                   </>
                 ) : (
                   <>
                     <Link
                       href="/auth"
-                      className="flex items-center gap-1.5 text-sm text-[var(--text-gray)] hover:text-[#667eea] transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)] transition-all"
                     >
-                      <User className="h-4 w-4" />
                       <span>Log in</span>
                     </Link>
                     <Link
                       href="/auth"
-                      className="flex items-center gap-1.5 rounded-lg bg-[#667eea] text-white px-3 py-2 text-sm font-medium hover:bg-[#5a67d8] transition-all"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-[#667eea] to-[#764ba2] shadow-md shadow-purple-500/20 hover:shadow-lg hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
-                      <User className="h-4 w-4" />
                       <span>Sign up</span>
                     </Link>
                   </>
                 )}
               </div>
 
-              {/* Mobile: Radius only (compact) */}
+              {/* Mobile: Radius only */}
               <div className="flex lg:hidden items-center">
-                <RadiusControl
+                  <RadiusControl
                   radius={radius}
                   compact
+                  max={100}
                   onChange={(newRadius) => {
                     setRadiusState(newRadius);
                     const params = new URLSearchParams(searchParams.toString());
@@ -408,9 +428,14 @@ function MapPageContent() {
             }`}
           >
             <div className="p-4 space-y-2 overflow-y-auto h-full">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-200/20 mb-2">
-                <h2 className="font-semibold text-[var(--text-dark)]">Menu</h2>
-                <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-gray-500/10 rounded-full">
+                           <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] mb-2">
+                <Link href="/map" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+                    <MapPin className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <span className="font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">ZayMap</span>
+                </Link>
+                <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-[var(--border-subtle)] rounded-full transition-colors">
                   <X className="h-5 w-5 text-[var(--text-gray)]" />
                 </button>
               </div>

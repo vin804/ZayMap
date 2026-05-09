@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, MapPin, History, ChevronLeft, Loader2, Heart } from "lucide-react";
+import { Search, X, MapPin, History, ChevronLeft, Loader2, Heart, Store, Package, AlertCircle, Navigation } from "lucide-react";
 import { ShopCard } from "@/components/search/shop-card";
 import { CategoryFilter } from "@/components/search/category-filter";
 import { useShopSearch, useRecentSearches, SearchFilters } from "@/hooks/use-shop-search";
 import { useProductSearch } from "@/hooks/use-product-search";
 import { ProductCard } from "@/components/search/product-card";
-import { Store, Package } from "lucide-react";
 
 const RADIUS_OPTIONS = [
   { value: 5, label: "5 km" },
@@ -16,19 +15,50 @@ const RADIUS_OPTIONS = [
   { value: 25, label: "25 km" },
   { value: 50, label: "50 km" },
   { value: 100, label: "100 km" },
-  { value: 500, label: "500 km" },
-  { value: 1000, label: "1000 km" },
-  { value: 1800, label: "1800 km" },
 ];
 
 const SEARCH_STATE_KEY = "zaymap_search_state";
+
+/* ── Skeletons ── */
+function ShopSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--card-bg)]">
+      <div className="h-24 animate-pulse bg-gray-300/10" />
+      <div className="relative px-4 pb-4">
+        <div className="relative -mt-6 mb-2 flex items-end gap-3">
+          <div className="h-12 w-12 flex-shrink-0 animate-pulse rounded-full border-2 border-[var(--card-bg)] bg-gray-300/10" />
+          <div className="mb-1 flex-1 space-y-2">
+            <div className="h-4 w-32 animate-pulse rounded-lg bg-gray-300/10" />
+            <div className="h-3 w-20 animate-pulse rounded-lg bg-gray-300/10" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-3 w-16 animate-pulse rounded bg-gray-300/10" />
+          <div className="h-3 w-12 animate-pulse rounded bg-gray-300/10" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductSkeleton() {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--card-bg)]">
+      <div className="aspect-square animate-pulse bg-gray-300/10" />
+      <div className="p-3 space-y-2">
+        <div className="h-4 w-full animate-pulse rounded bg-gray-300/10" />
+        <div className="h-3 w-2/3 animate-pulse rounded bg-gray-300/10" />
+        <div className="h-5 w-1/3 animate-pulse rounded bg-gray-300/10" />
+      </div>
+    </div>
+  );
+}
 
 export default function SearchPage() {
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   
-  // Search state
   const [activeTab, setActiveTab] = useState<"shops" | "products">("shops");
   const [query, setQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -36,7 +66,6 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
 
-  // Hooks
   const { results, loading, error, totalCount, search, clearResults } = useShopSearch(
     userLocation?.lat ?? null,
     userLocation?.lon ?? null
@@ -51,32 +80,24 @@ export default function SearchPage() {
   } = useProductSearch();
   const { recentSearches, saveRecentSearch, removeRecentSearch } = useRecentSearches();
 
-  // Get user location on mount
   useEffect(() => {
     if (typeof navigator === "undefined") return;
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        });
+        setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
         setLocationError(null);
       },
       (err) => {
         console.error("Location error:", err);
         setLocationError("Unable to get your location. Please enable location services.");
-        // Fallback to Yangon
         setUserLocation({ lat: 16.8661, lon: 96.1951 });
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
   }, []);
 
-  // Restore search state from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
     try {
       const saved = localStorage.getItem(SEARCH_STATE_KEY);
       if (saved) {
@@ -86,102 +107,54 @@ export default function SearchPage() {
         if (state.selectedCategories) setSelectedCategories(state.selectedCategories);
         if (state.radiusKm) setRadiusKm(state.radiusKm);
       }
-    } catch {
-      // Ignore localStorage errors
-    }
+    } catch { /* ignore */ }
     setIsRestored(true);
   }, []);
 
-  // Trigger search after state is restored and location is available
   useEffect(() => {
     if (!isRestored || !userLocation) return;
-    
-    // Small delay to ensure state is set
     const timer = setTimeout(() => {
       if (activeTab === "shops") {
-        if (query.trim() || selectedCategories.length > 0) {
-          performShopSearch();
-        }
+        if (query.trim() || selectedCategories.length > 0) performShopSearch();
       } else {
-        // For products tab
-        if (query.trim().length >= 1) {
-          performProductSearch();
-        }
+        if (query.trim().length >= 1) performProductSearch();
       }
     }, 100);
-    
     return () => clearTimeout(timer);
-  }, [isRestored, userLocation]); // Only run once after restoration
+  }, [isRestored, userLocation]);
 
-  // Save search state to localStorage when it changes
   useEffect(() => {
     if (typeof window === "undefined" || !isRestored) return;
-    
     try {
-      localStorage.setItem(SEARCH_STATE_KEY, JSON.stringify({
-        query,
-        activeTab,
-        selectedCategories,
-        radiusKm,
-      }));
-    } catch {
-      // Ignore localStorage errors
-    }
+      localStorage.setItem(SEARCH_STATE_KEY, JSON.stringify({ query, activeTab, selectedCategories, radiusKm }));
+    } catch { /* ignore */ }
   }, [query, activeTab, selectedCategories, radiusKm, isRestored]);
 
-  // Debounced search for shops
   const performShopSearch = useCallback(async () => {
     if (!userLocation) return;
-    
-    const filters: SearchFilters = {
-      query: query.trim(),
-      categories: selectedCategories,
-      radiusKm,
-    };
-    
+    const filters: SearchFilters = { query: query.trim(), categories: selectedCategories, radiusKm };
     await search(filters);
     setHasSearched(true);
-    
-    // Save to recent searches if we have results or a query
     if (query.trim() || selectedCategories.length > 0) {
-      saveRecentSearch({
-        query: query.trim(),
-        categories: selectedCategories,
-        radiusKm,
-      });
+      saveRecentSearch({ query: query.trim(), categories: selectedCategories, radiusKm });
     }
   }, [query, selectedCategories, radiusKm, userLocation, search, saveRecentSearch]);
 
-  // Debounced search for products
   const performProductSearch = useCallback(async () => {
     if (!userLocation || !query.trim()) return;
-    
-    await searchProducts({
-      query: query.trim(),
-      latitude: userLocation.lat,
-      longitude: userLocation.lon,
-      radius_km: radiusKm,
-    });
+    await searchProducts({ query: query.trim(), latitude: userLocation.lat, longitude: userLocation.lon, radius_km: radiusKm });
     setHasSearched(true);
   }, [query, userLocation, radiusKm, searchProducts]);
 
-  // Auto-search when filters change (with debounce)
   useEffect(() => {
     if (!userLocation) return;
-    
     const timer = setTimeout(() => {
       if (activeTab === "shops") {
-        if (query.trim() || selectedCategories.length > 0) {
-          performShopSearch();
-        }
+        if (query.trim() || selectedCategories.length > 0) performShopSearch();
       } else {
-        // For products, require at least 2 characters
-        if (query.trim().length >= 2) {
-          performProductSearch();
-        }
+        if (query.trim().length >= 2) performProductSearch();
       }
     }, 300);
-    
     return () => clearTimeout(timer);
   }, [query, selectedCategories, radiusKm, userLocation, activeTab, performShopSearch, performProductSearch]);
 
@@ -208,63 +181,50 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200/20">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          {/* Back button and title */}
-          <div className="flex items-center justify-between gap-3 mb-4">
+      {/* Glass Header */}
+      <div className="sticky top-0 z-10 bg-[var(--card-bg)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.push("/map")}
-                className="p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
-              >
+              <button onClick={() => router.push("/map")} className="p-2 -ml-2 rounded-xl hover:bg-[var(--border-subtle)] transition-colors">
                 <ChevronLeft className="h-5 w-5 text-[var(--text-gray)]" />
               </button>
-              <h1 className="text-lg font-semibold text-[var(--text-dark)]">
+              <h1 className="text-lg font-bold text-[var(--text-dark)]">
                 {activeTab === "shops" ? "Search Shops" : "Search Products"}
               </h1>
             </div>
-            
-            {/* Saved Products Link */}
-            <button
-              onClick={() => router.push("/saved")}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm text-[#667eea] hover:bg-[#667eea]/10 hover:border-[#667eea]/30 rounded-lg transition-all"
-            >
+            <button onClick={() => router.push("/saved")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-[#667eea] bg-[#667eea]/10 hover:bg-[#667eea]/15 transition-all">
               <Heart className="h-4 w-4" />
-              <span className="text-sm font-medium">Saved</span>
+              <span>Saved</span>
             </button>
           </div>
 
-          {/* Search Input - Centered */}
+          {/* Search Input */}
           <div className="max-w-2xl mx-auto">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={activeTab === "shops" ? "Search shops by name..." : "Search products..."}
-                className="w-full pl-10 pr-10 py-3 bg-[var(--card-bg)] border border-[var(--border-color)] shadow-sm rounded-xl text-[var(--text-dark)] placeholder-[var(--text-gray)] focus:outline-none focus:ring-2 focus:ring-[#667eea]/50 focus:border-[#667eea] transition-all"
+                className="w-full pl-11 pr-10 py-3 bg-[var(--card-bg)] border-2 border-[var(--border-subtle)] shadow-sm rounded-2xl text-[var(--text-dark)] placeholder-[var(--text-gray)] focus:outline-none focus:ring-2 focus:ring-[#667eea]/40 focus:border-[#667eea] transition-all"
               />
               {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-500/10 transition-colors"
-                >
+                <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-[var(--border-subtle)] transition-colors">
                   <X className="h-4 w-4 text-[var(--text-gray)]" />
                 </button>
               )}
             </div>
-
-            {/* Location indicator */}
             {locationError ? (
-              <div className="mt-3 flex items-center gap-2 text-sm text-amber-600">
+              <div className="mt-2 flex items-center gap-2 text-sm text-amber-500">
                 <MapPin className="h-4 w-4" />
                 <span>{locationError}</span>
               </div>
             ) : userLocation && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-gray)]">
-                <MapPin className="h-4 w-4" />
+              <div className="mt-2 flex items-center gap-2 text-sm text-[var(--text-gray)]">
+                <Navigation className="h-3.5 w-3.5" />
                 <span>Searching near your location</span>
               </div>
             )}
@@ -273,173 +233,135 @@ export default function SearchPage() {
       </div>
 
       {/* Filters */}
-      <div className="px-4 py-4">
-        {/* Tab Switcher - iOS Style Pill */}
-        <div className="mb-4">
-          <div className="flex bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm rounded-xl p-1 max-w-md mx-auto">
-            <button
-              onClick={() => handleTabChange("shops")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "shops"
-                  ? "bg-[#667eea] text-white shadow-md"
-                  : "text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-gray-500/5"
-              }`}
-            >
-              <Store className="h-4 w-4" />
-              Shops
+      <div className="px-4 py-4 max-w-2xl mx-auto">
+        {/* Tab Switcher */}
+        <div className="mb-5">
+          <div className="flex bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-2xl p-1 shadow-sm">
+            <button onClick={() => handleTabChange("shops")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${activeTab === "shops" ? "bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-md" : "text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)]"}`}>
+              <Store className="h-4 w-4" /> Shops
             </button>
-            <button
-              onClick={() => handleTabChange("products")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "products"
-                  ? "bg-[#667eea] text-white shadow-md"
-                  : "text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-gray-500/5"
-              }`}
-            >
-              <Package className="h-4 w-4" />
-              Products
+            <button onClick={() => handleTabChange("products")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${activeTab === "products" ? "bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-md" : "text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)]"}`}>
+              <Package className="h-4 w-4" /> Products
             </button>
           </div>
         </div>
 
-        {/* Radius Selector */}
-        <div className="mb-6 px-4">
-          <div className="flex items-center justify-between mb-2 max-w-2xl mx-auto">
-            <h3 className="text-sm font-medium text-[var(--text-dark)]">Search Radius</h3>
-            <span className="text-sm font-semibold text-[#667eea]">{radiusKm} km</span>
+        {/* Radius */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-[var(--text-dark)]">Search Radius</h3>
+            <span className="text-sm font-bold text-[#667eea]">{radiusKm} km</span>
           </div>
-          <div className="flex gap-2 max-w-2xl mx-auto overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {RADIUS_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setRadiusKm(option.value)}
-                className={`
-                  flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all shadow-sm whitespace-nowrap
-                  ${radiusKm === option.value
-                    ? "bg-[#667eea] text-white shadow-md border border-[#667eea]"
-                    : "bg-[var(--card-bg)] text-[var(--text-gray)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] hover:shadow-md"
-                  }
-                `}
-              >
+              <button key={option.value} onClick={() => setRadiusKm(option.value)}
+                className={`flex-shrink-0 py-2 px-3.5 rounded-xl text-sm font-medium transition-all border ${radiusKm === option.value ? "bg-[#667eea] text-white border-[#667eea] shadow-md" : "bg-[var(--card-bg)] text-[var(--text-gray)] border-[var(--border-subtle)] hover:border-[var(--border-color)]"}`}>
                 {option.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Category Filter - Only for Shops */}
+        {/* Categories */}
         {activeTab === "shops" && (
-          <div className="max-w-2xl mx-auto">
-            <CategoryFilter
-              selectedCategories={selectedCategories}
-              onChange={setSelectedCategories}
-            />
-          </div>
+          <CategoryFilter selectedCategories={selectedCategories} onChange={setSelectedCategories} />
         )}
 
-        {/* Clear Filters */}
         {(query || selectedCategories.length > 0) && (
-          <div className="max-w-2xl mx-auto">
-            <button
-              onClick={handleClearSearch}
-              className="mt-4 text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] transition-colors"
-            >
-              Clear all filters
-            </button>
-          </div>
+          <button onClick={handleClearSearch} className="mt-4 text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] transition-colors">
+            Clear all filters
+          </button>
         )}
       </div>
 
       {/* Recent Searches */}
       {!hasSearched && recentSearches.length > 0 && (
-        <div className="max-w-2xl mx-auto px-4 py-4 border-t border-gray-200/20">
+        <div className="max-w-2xl mx-auto px-4 pb-4 border-b border-[var(--border-subtle)]">
           <div className="flex items-center gap-2 mb-3">
             <History className="h-4 w-4 text-[var(--text-gray)]" />
-            <h3 className="text-sm font-medium text-[var(--text-dark)]">Recent Searches</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-dark)]">Recent Searches</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {recentSearches.map((recent) => (
-              <button
-                key={recent.id}
-                onClick={() => handleRecentSearchClick(recent)}
-                className="group flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] border border-gray-200/20 rounded-lg text-sm text-[var(--text-gray)] hover:border-[#667eea]/50 transition-all"
-              >
-                <span className="truncate max-w-[150px]">
-                  {recent.query || recent.categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(", ")}
-                </span>
-                <span className="text-xs text-[var(--text-gray)]">({recent.radiusKm} km)</span>
-                <X
-                  className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeRecentSearch(recent.id);
-                  }}
-                />
+              <button key={recent.id} onClick={() => handleRecentSearchClick(recent)}
+                className="group flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-xl text-sm text-[var(--text-gray)] hover:border-[#667eea]/50 transition-all">
+                <span className="truncate max-w-[150px]">{recent.query || recent.categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(", ")}</span>
+                <span className="text-xs opacity-60">({recent.radiusKm} km)</span>
+                <X className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); removeRecentSearch(recent.id); }} />
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Results */}
-      <div className="px-4 py-4">
-        {/* Loading State */}
+                      {/* Results */}
+      <div className="px-4 py-4 mx-auto max-w-7xl">
+        {/* ── Loading Skeletons ── */}
         {activeTab === "shops" && loading && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[#667eea]" />
-            <p className="mt-4 text-sm text-[var(--text-gray)]">Searching shops...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} style={{ opacity: 0, animation: `fadeIn 0.3s ease ${i * 80}ms forwards` }}>
+                <ShopSkeleton />
+              </div>
+            ))}
           </div>
         )}
         {activeTab === "products" && productLoading && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[#667eea]" />
-            <p className="mt-4 text-sm text-[var(--text-gray)]">Searching products...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} style={{ opacity: 0, animation: `fadeIn 0.3s ease ${i * 60}ms forwards` }}>
+                <ProductSkeleton />
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Error State */}
+        {/* ── Error States ── */}
         {activeTab === "shops" && error && (
-          <div className="text-center py-12">
-            <p className="text-red-500">{error}</p>
-            <button
-              onClick={performShopSearch}
-              className="mt-4 px-4 py-2 bg-[#667eea] text-white rounded-lg hover:bg-[#5a67d8] transition-colors"
-            >
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 mb-3">
+              <AlertCircle className="h-7 w-7 text-red-500" />
+            </div>
+            <p className="text-sm font-bold text-[var(--text-dark)]">Search failed</p>
+            <p className="text-xs text-[var(--text-gray)] mt-1 mb-4">{error}</p>
+            <button onClick={performShopSearch} className="rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-500/20 hover:scale-[1.03] transition-all">
               Try Again
             </button>
           </div>
         )}
         {activeTab === "products" && productError && (
-          <div className="text-center py-12">
-            <p className="text-red-500">{productError}</p>
-            <button
-              onClick={performProductSearch}
-              className="mt-4 px-4 py-2 bg-[#667eea] text-white rounded-lg hover:bg-[#5a67d8] transition-colors"
-            >
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 mb-3">
+              <AlertCircle className="h-7 w-7 text-red-500" />
+            </div>
+            <p className="text-sm font-bold text-[var(--text-dark)]">Search failed</p>
+            <p className="text-xs text-[var(--text-gray)] mt-1 mb-4">{productError}</p>
+            <button onClick={performProductSearch} className="rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-500/20 hover:scale-[1.03] transition-all">
               Try Again
             </button>
           </div>
         )}
 
-        {/* Section Divider */}
-        <div className="border-t-2 border-[var(--border-subtle)] my-4 max-w-2xl mx-auto" />
-
-        {/* Results */}
+        {/* ── Shop Results ── */}
         {activeTab === "shops" && !loading && !error && hasSearched && (
           <>
-            <div className="flex items-center justify-between mb-4 bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm rounded-lg p-3">
-              <h2 className="text-lg font-semibold text-[var(--text-dark)]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-[var(--text-dark)]">
                 {totalCount} {totalCount === 1 ? "shop" : "shops"} found
               </h2>
             </div>
-
             {results.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-[var(--text-gray)]">No shops found matching your criteria.</p>
-                <p className="mt-2 text-sm text-[var(--text-gray)]">Try expanding your radius or clearing filters.</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 mb-3">
+                  <Search className="h-7 w-7 text-blue-500" />
+                </div>
+                <p className="text-sm font-bold text-[var(--text-dark)]">No shops found</p>
+                <p className="text-xs text-[var(--text-gray)] mt-1">Try expanding your radius or clearing filters.</p>
               </div>
-            ) : (
-              <div className="space-y-3">
+              ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {results.map((shop) => (
                   <ShopCard
                     key={shop.shop_id}
@@ -452,6 +374,7 @@ export default function SearchPage() {
                     review_count={shop.review_count}
                     delivery_available={shop.delivery_available}
                     logo_url={shop.logo_url}
+                    image_urls={(shop as any).image_urls}
                   />
                 ))}
               </div>
@@ -459,73 +382,59 @@ export default function SearchPage() {
           </>
         )}
 
-        {/* Product Results */}
+        {/* ── Product Results ── */}
         {activeTab === "products" && !productLoading && !productError && hasSearched && (
           <>
-            <div className="mb-4 bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-sm rounded-lg p-3">
-              <h2 className="text-lg font-semibold text-[var(--text-dark)] text-left">
+            <div className="mb-4">
+              <h2 className="text-base font-bold text-[var(--text-dark)]">
                 {productMeta?.total_count ?? 0} {productMeta?.total_count === 1 ? "product" : "products"} found
               </h2>
             </div>
-
             {productResults.length === 0 ? (
-              <div className="text-center py-12 bg-[var(--card-bg)] rounded-xl border-2 border-[var(--border-subtle)] shadow-sm">
-                <p className="text-[var(--text-dark)]">No products found matching your search.</p>
-                <div className="mt-4 space-y-2 text-sm text-[var(--text-gray)]">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 mb-3">
+                  <Package className="h-7 w-7 text-blue-500" />
+                </div>
+                <p className="text-sm font-bold text-[var(--text-dark)]">No products found</p>
+                <div className="mt-3 space-y-2 text-xs text-[var(--text-gray)]">
                   <p>Try different keywords</p>
-                  <button
-                    onClick={() => setRadiusKm(radiusKm + 5)}
-                    className="text-[#667eea] hover:underline"
-                  >
-                    Increase your search radius
-                  </button>
+                  <button onClick={() => setRadiusKm(radiusKm + 5)} className="text-[#667eea] font-medium hover:underline">Increase your search radius</button>
                   <p>or</p>
-                  <button
-                    onClick={() => router.push("/map")}
-                    className="text-[#667eea] hover:underline"
-                  >
-                    Browse shops instead
-                  </button>
+                  <button onClick={() => router.push("/map")} className="text-[#667eea] font-medium hover:underline">Browse shops instead</button>
                 </div>
               </div>
             ) : (
-              <div className="w-full" style={{ textAlign: 'left' }}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {productResults.map((product) => (
-                  <ProductCard
-                    key={product.product_id}
-                    product_id={product.product_id}
-                    product_name={product.product_name}
-                    product_name_mm={product.product_name_mm}
-                    shop_id={product.shop_id}
-                    shop_name={product.shop_name}
-                    shop_name_mm={product.shop_name_mm}
-                    image_url={product.image_url}
-                    price={product.price}
-                    currency={product.currency}
-                    freshness_status={product.freshness_status}
-                    product_rating={product.product_rating}
-                    distance_km={product.distance_km}
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {productResults.map((product) => (
+                  <ProductCard key={product.product_id} {...product} />
                 ))}
-                  </div>
-                </div>
+              </div>
             )}
           </>
         )}
 
-        {/* Empty State */}
+        {/* ── Empty State ── */}
         {!hasSearched && (
-          <div className="text-center py-12">
-            <Search className="h-12 w-12 text-[var(--text-gray)] mx-auto mb-4" />
-            <p className="text-[var(--text-gray)]">
-              {activeTab === "shops"
-                ? "Enter a shop name or select categories to start searching"
-                : "Enter a product name to search (minimum 2 characters)"}
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--border-subtle)] mb-4">
+              <Search className="h-8 w-8 text-[var(--text-gray)]" />
+            </div>
+            <p className="text-sm font-medium text-[var(--text-dark)]">
+              {activeTab === "shops" ? "Enter a shop name or select categories" : "Enter a product name to search"}
+            </p>
+            <p className="text-xs text-[var(--text-gray)] mt-1">
+              {activeTab === "shops" ? "Results will appear automatically" : "Minimum 2 characters required"}
             </p>
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

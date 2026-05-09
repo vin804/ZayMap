@@ -59,14 +59,14 @@ export default function EditShopPage() {
   // Load shop data
   useEffect(() => {
     const loadShop = async () => {
-      if (!user?.shop_id) {
-        setError("No shop associated with your account");
+      if (!user?.uid) {
+        setError("Please sign in to edit your shop");
         setLoading(false);
         return;
       }
 
       try {
-        const res = await fetch(`/api/shops/${user.shop_id}`);
+        const res = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
         if (!res.ok) throw new Error("Failed to load shop");
         
         const data = await res.json();

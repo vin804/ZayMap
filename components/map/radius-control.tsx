@@ -14,7 +14,7 @@ export function RadiusControl({
   radius,
   onChange,
   min = 5,
-  max = 1800,
+  max = 100,
   compact = false,
 }: RadiusControlProps) {
   const [inputValue, setInputValue] = useState(radius.toString());

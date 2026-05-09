@@ -21,6 +21,13 @@ import {
   Upload,
 } from "lucide-react";
 
+interface Category {
+  id: string;
+  name?: string;
+  name_mm?: string;
+  icon?: string;
+}
+
 interface ShopFormData {
   name: string;
   name_mm: string;

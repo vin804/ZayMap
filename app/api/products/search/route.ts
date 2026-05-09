@@ -19,6 +19,12 @@ function getDb() {
   return getFirestore();
 }
 
+// Test shop/product ID prefixes to filter out sample data
+const TEST_ID_PREFIXES = ["hk-", "test-", "sample-", "gemstone-hk-"];
+
+function isSampleData(id: string): boolean {
+  return TEST_ID_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
 // Product freshness status
 type FreshnessStatus = "green" | "orange" | "red";
 
@@ -113,9 +119,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!radius_km || radius_km < 1 || radius_km > 10000) {
+      if (!radius_km || radius_km < 1 || radius_km > 100) {
       return NextResponse.json(
-        { error: "Invalid radius. Must be between 1 and 10000 km." },
+        { error: "Invalid radius. Must be between 1 and 100 km." },
         { status: 400 }
       );
     }
@@ -135,6 +141,10 @@ export async function POST(request: NextRequest) {
       const data = productDoc.data();
       const shopId = data.shop_id as string;
       
+            // Skip sample/test products
+      if (isSampleData(productDoc.id) || isSampleData(shopId)) {
+        continue;
+      }
       // Get shop location (with caching)
       let shopData = shopCache.get(shopId);
       if (!shopData) {

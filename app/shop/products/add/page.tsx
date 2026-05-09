@@ -194,6 +194,7 @@ export default function AddProductPage() {
                   name_mm: "",
                   description: "",
                   price: 0,
+                  category_id: "",
                   images: [],
                 });
                 setImagePreviews([]);

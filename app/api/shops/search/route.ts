@@ -52,6 +52,7 @@ interface Shop {
   longitude: number;
   delivery_available: boolean;
   logo_url?: string;
+  image_urls?: string[];
 }
 
 // Search request interface
@@ -111,9 +112,9 @@ export async function POST(request: NextRequest) {
 
     // Default radius if not provided
     const effectiveRadius = radius_km || 20;
-    if (effectiveRadius < 5 || effectiveRadius > 10000) {
+    if (effectiveRadius < 5 || effectiveRadius > 100) {
       return NextResponse.json(
-        { error: "Invalid radius_km. Must be between 5 and 10000." },
+        { error: "Invalid radius_km. Must be between 5 and 100." },
         { status: 400 }
       );
     }
@@ -188,6 +189,7 @@ export async function POST(request: NextRequest) {
         response_speed_score: data.response_speed_score || 0,
         delivery_available: data.delivery_available || false,
         logo_url: data.logo_url || "",
+        image_urls: data.image_urls || [],
       });
     });
     
@@ -258,6 +260,7 @@ export async function POST(request: NextRequest) {
         latitude: shop.latitude,
         longitude: shop.longitude,
         logo_url: shop.logo_url,
+        image_urls: shop.image_urls,
       })),
       total_count: shops.length,
       pagination: {

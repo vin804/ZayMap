@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Star, MapPin, Truck } from "lucide-react";
+import { motion } from "framer-motion";
+import { Star, MapPin, Truck, Store } from "lucide-react";
 
 interface ShopCardProps {
   shop_id: string;
@@ -13,99 +14,99 @@ interface ShopCardProps {
   review_count: number;
   delivery_available: boolean;
   logo_url?: string;
+  image_urls?: string[];
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  clothes: "👕",
-  electronics: "📱",
-  food: "🍜",
-  cosmetics: "💄",
-  second_hand: "♻️",
-  other: "🏪",
+  clothes: "👕", electronics: "📱", food: "🍜", cosmetics: "💄", second_hand: "♻️", other: "🏪",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  clothes: "Clothes",
-  electronics: "Electronics",
-  food: "Food",
-  cosmetics: "Cosmetics",
-  second_hand: "Second-hand",
-  other: "Other",
+  clothes: "Clothes", electronics: "Electronics", food: "Food", cosmetics: "Cosmetics", second_hand: "Second-hand", other: "Other",
 };
 
 export function ShopCard({
-  shop_id,
-  name,
-  name_mm,
-  category,
-  distance_km,
-  rating,
-  review_count,
-  delivery_available,
-  logo_url,
+  shop_id, name, name_mm, category, distance_km, rating, review_count, delivery_available, logo_url, image_urls,
 }: ShopCardProps) {
   const displayName = name_mm || name;
-  
+  const bannerUrl = image_urls?.[0];
+
   return (
-    <Link
-      href={`/shop/${shop_id}`}
-      className="group block rounded-xl border border-gray-200/20 bg-[var(--card-bg)] p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-[#667eea]/30"
-    >
-      <div className="flex items-start gap-3">
-        {/* Logo */}
-        <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-[#667eea]/30 to-[#764ba2]/30 flex items-center justify-center overflow-hidden">
-          {logo_url ? (
-            <img 
-              src={logo_url} 
-              alt={displayName}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
+    <Link href={`/shop/${shop_id}`} className="group block">
+      <motion.div
+        whileHover={{ y: -6, boxShadow: "0 20px 40px -12px rgba(102,126,234,0.15)" }}
+        transition={{ duration: 0.3 }}
+        className="rounded-2xl overflow-hidden border border-[var(--border-subtle)]/60 bg-[var(--card-bg)] h-full flex flex-col"
+      >
+        {/* Banner - bigger like product cards */}
+        <div className="relative aspect-[4/3] overflow-hidden">
+          {bannerUrl ? (
+            <img
+              src={bannerUrl}
+              alt={`${displayName} banner`}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
-            <span className="text-xl">{CATEGORY_ICONS[category] || "🏪"}</span>
+            <div className="h-full w-full bg-gradient-to-br from-[#667eea]/15 via-purple-500/10 to-[#764ba2]/15" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/5 to-transparent" />
+          {rating > 0 && (
+            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 backdrop-blur-md">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              <span className="text-xs font-bold text-white">{rating.toFixed(1)}</span>
+            </div>
           )}
         </div>
-        
-        <div className="flex-1 min-w-0">
-          {/* Shop Name */}
-          <h3 className="font-semibold text-[var(--text-dark)] group-hover:text-[#667eea] transition-colors truncate">
-            {displayName}
-          </h3>
-          
-          {/* Category Badge */}
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-500/10 px-2 py-0.5 text-xs font-medium text-[var(--text-gray)]">
-              <span>{CATEGORY_ICONS[category] || "🏪"}</span>
-              <span>{CATEGORY_LABELS[category] || category}</span>
+
+        {/* Content */}
+        <div className="relative px-4 pb-4 flex flex-col flex-1">
+          {/* Logo overlapping banner */}
+          <div className="relative -mt-10 mb-3 flex items-end gap-3">
+            {logo_url ? (
+              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl border-2 border-[var(--card-bg)] bg-white shadow-xl transition-transform duration-300 group-hover:scale-105">
+                <img src={logo_url} alt={displayName} className="h-full w-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              </div>
+            ) : (
+              <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-[var(--card-bg)] bg-gradient-to-br from-[#667eea] to-[#764ba2] text-3xl shadow-xl transition-transform duration-300 group-hover:scale-105">
+                {CATEGORY_ICONS[category] || "🏪"}
+              </div>
+            )}
+            <div className="mb-2 min-w-0 flex-1">
+              <h3 className="truncate text-lg font-bold text-[var(--text-dark)] transition-colors group-hover:text-[#667eea]">
+                {displayName}
+              </h3>
+            </div>
+          </div>
+
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--border-subtle)] px-3 py-1 text-xs font-medium text-[var(--text-gray)]">
+              <Store className="h-3 w-3" />
+              {CATEGORY_LABELS[category] || category}
             </span>
-            
-            {/* Delivery Badge */}
             {delivery_available && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-500">
-                <Truck className="h-3 w-3" />
-                <span>Delivery</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-500">
+                <Truck className="h-3 w-3" /> Delivery
               </span>
             )}
           </div>
-          
-          {/* Distance */}
-          <div className="mt-2 flex items-center gap-1 text-sm text-[var(--text-gray)]">
-            <MapPin className="h-3.5 w-3.5" />
-            <span>{distance_km.toFixed(1)} km away</span>
+
+          {/* Meta - pushed to bottom */}
+          <div className="mt-auto flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]/40">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-[#667eea]">
+              <MapPin className="h-4 w-4" />
+              {distance_km.toFixed(1)} km away
+            </span>
+            {review_count > 0 ? (
+              <span className="text-sm text-[var(--text-gray)]">{review_count} reviews</span>
+            ) : (
+              <span className="text-sm text-[var(--text-gray)]">No reviews yet</span>
+            )}
           </div>
         </div>
-        
-        {/* Rating */}
-        <div className="flex flex-col items-end gap-0.5">
-          <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-[var(--text-dark)]">{rating.toFixed(1)}</span>
-          </div>
-          <span className="text-xs text-[var(--text-gray)]">({review_count} reviews)</span>
-        </div>
-      </div>
+      </motion.div>
     </Link>
   );
 }

@@ -13,6 +13,7 @@ export interface Shop {
   phone?: string;
   rating?: number;
   logoUrl?: string;
+  bannerUrl?: string;
   createdAt?: Date;
   distance?: number;
 }
@@ -106,6 +107,7 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
         distance_km?: number;
         rating?: number;
         logo_url?: string;
+        image_urls?: string[];
         address?: string;
         phone?: string;
       }) => ({
@@ -117,6 +119,7 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
         distance: shop.distance_km,
         rating: shop.rating,
         logoUrl: shop.logo_url,
+        bannerUrl: shop.image_urls?.[0] || "",
         address: shop.address || "",
         phone: shop.phone,
       }));

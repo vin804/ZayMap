@@ -25,41 +25,27 @@ export function CategoryFilter({ selectedCategories, onChange }: CategoryFilterP
     }
   }, [selectedCategories, onChange]);
 
-  const clearAll = useCallback(() => {
-    onChange([]);
-  }, [onChange]);
+  const clearAll = useCallback(() => onChange([]), [onChange]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-black">Categories</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-dark)]">Categories</h3>
         {selectedCategories.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="text-xs font-medium text-[#667eea] hover:text-[#5a67d8] transition-colors"
-          >
+          <button onClick={clearAll} className="text-xs font-semibold text-[#667eea] hover:text-[#5a67d8] transition-colors">
             Clear all
           </button>
         )}
       </div>
-      
       <div className="flex flex-wrap gap-2">
         {SHOP_CATEGORIES.map((category) => {
           const isSelected = selectedCategories.includes(category.id);
-          
           return (
-            <button
-              key={category.id}
-              onClick={() => toggleCategory(category.id)}
-              className={`
-                inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium
-                transition-all duration-200 border
-                ${isSelected
-                  ? "bg-[#667eea] text-white border-[#667eea] shadow-sm"
-                  : "bg-white text-black border-gray-200 hover:border-[#667eea]/50 hover:bg-gray-50"
-                }
-              `}
-            >
+            <button key={category.id} onClick={() => toggleCategory(category.id)}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all border ${isSelected
+                ? "bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white border-transparent shadow-md"
+                : "bg-[var(--card-bg)] text-[var(--text-dark)] border-[var(--border-subtle)] hover:border-[#667eea]/50 hover:bg-[var(--border-subtle)]"
+              }`}>
               <span className="text-base">{category.icon}</span>
               <span>{category.name}</span>
             </button>
