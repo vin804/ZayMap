@@ -258,7 +258,7 @@ function MapPageContent() {
                 )}
               </button>
               <Link href="/map" className="flex items-center gap-2 group">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/30 transition-shadow">
+                <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/30 transition-shadow">
                   <MapPin className="h-4 w-4 text-white" />
                 </div>
                 <span className="text-lg font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
@@ -341,7 +341,7 @@ function MapPageContent() {
               
               <button
                 onClick={toggleTheme}
-                className="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-gray)] hover:text-[var(--text-dark)] transition-all"
+                className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-gray)] hover:text-[var(--text-dark)] transition-all"
                 title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {theme === "dark" ? (
