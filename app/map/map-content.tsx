@@ -109,7 +109,7 @@ function MobileBottomSheet({
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[9997] pointer-events-none">
       <div ref={sheetRef}
-        className="pointer-events-auto bg-white dark:bg-[#0f0f23] rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.3)] border-t border-gray-200 dark:border-gray-800"
+        className="pointer-events-auto bg-[var(--card-bg)] rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.3)] border-t border-[var(--border-subtle)]"
         style={{ transform: `translateY(${MAX_T}px)`, transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)", height: OPEN_H + PEEK_H, marginTop: -PEEK_H }}>
         <div onTouchStart={(e) => beginDrag(e.touches[0].clientY)}
              onTouchMove={(e) => moveDrag(e.touches[0].clientY)}
@@ -118,7 +118,7 @@ function MobileBottomSheet({
              onClick={onTap}
              className="flex flex-col items-center cursor-grab active:cursor-grabbing select-none py-3 px-4">
           <div className="w-10 h-1 bg-gray-400/50 rounded-full mb-2" />
-          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-1 text-xs text-[var(--text-gray)]">
             <ChevronUp className={`h-4 w-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
             <span>{open ? 'Tap to close' : 'Nearby Shops'}</span>
           </div>
@@ -519,124 +519,93 @@ function MapPageContent() {
             />
           </aside>
 
-                    {/* Mobile Nav Drawer - solid opaque background */}
+                    {/* Mobile Nav Drawer */}
           <aside
-            className={`lg:hidden fixed inset-y-0 left-0 z-[10000] w-[280px] bg-white dark:bg-[#0a0a1a] shadow-2xl transition-transform duration-300 ${
+            className={`lg:hidden fixed inset-y-0 left-0 z-[10000] w-[280px] bg-[var(--card-bg)] shadow-2xl transition-transform duration-300 ${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
             <div className="flex flex-col h-full">
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
                 <Link href="/map" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
                   <div className="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-[#667eea] to-[#764ba2]">
                     <MapPin className="h-3.5 w-3.5 text-white" />
                   </div>
                   <span className="font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">ZayMap</span>
                 </Link>
-                <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-                  <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-[var(--border-subtle)] rounded-full transition-colors">
+                  <X className="h-5 w-5 text-[var(--text-gray)]" />
                 </button>
               </div>
 
-              {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto py-2">
-                {/* Section: Preferences */}
                 <div className="px-2 mb-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Preferences</p>
-                  <button
-                    onClick={() => { toggleTheme(); setSidebarOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                  >
-                    {theme === "dark" ? (
-                      <Sun className="h-5 w-5 text-amber-500" />
-                    ) : (
-                      <Moon className="h-5 w-5 text-[#667eea]" />
-                    )}
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Preferences</p>
+                  <button onClick={() => { toggleTheme(); setSidebarOpen(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                    {theme === "dark" ? <Sun className="h-5 w-5 text-amber-500" /> : <Moon className="h-5 w-5 text-[#667eea]" />}
                     <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
                   </button>
                 </div>
 
-                {/* Section: Your Lists */}
                 <div className="px-2 mb-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Your Lists</p>
-                  <button
-                    onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view saved products")) return; router.push("/saved"); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                  >
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Your Lists</p>
+                  <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view saved products")) return; router.push("/saved"); }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
                     <Bookmark className="h-5 w-5 text-[#667eea]" />
                     <span>Saved Products</span>
                   </button>
-                  <button
-                    onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view followed shops")) return; router.push("/followed-shops"); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                  >
+                  <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view followed shops")) return; router.push("/followed-shops"); }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
                     <Star className="h-5 w-5 text-[#667eea]" />
                     <span>Followed Shops</span>
                   </button>
                 </div>
 
-                {/* Section: Shop */}
                 <div className="px-2 mb-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Shop</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Shop</p>
                   {!isCheckingShop && hasShop && (
-                    <button
-                      onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "access my shop")) return; router.push("/shop/dashboard"); }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                    >
+                    <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "access my shop")) return; router.push("/shop/dashboard"); }}
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
                       <Store className="h-5 w-5 text-[#667eea]" />
                       <span>My Shop</span>
                     </button>
                   )}
                   {!isCheckingShop && !hasShop && (
-                    <button
-                      onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "register a shop")) return; router.push("/onboarding/shop-registration"); }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                    >
+                    <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "register a shop")) return; router.push("/onboarding/shop-registration"); }}
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
                       <Plus className="h-5 w-5 text-[#667eea]" />
                       <span>Register Shop</span>
                     </button>
                   )}
                 </div>
 
-                {/* Section: Account */}
                 <div className="px-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Account</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Account</p>
                   {user ? (
                     <>
-                      <Link
-                        href="/profile"
-                        onClick={() => setSidebarOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                      >
+                      <Link href="/profile" onClick={() => setSidebarOpen(false)}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
                         <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[9px] text-white font-bold">
                           {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
                         </div>
                         <span className="truncate">{user?.displayName || "Profile"}</span>
                       </Link>
-                      <button
-                        onClick={() => { setSidebarOpen(false); handleLogout(); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 text-sm transition-colors"
-                      >
+                      <button onClick={() => { setSidebarOpen(false); handleLogout(); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 text-red-500 text-sm transition-colors">
                         <LogOut className="h-5 w-5" />
                         <span>Log out</span>
                       </button>
                     </>
                   ) : (
                     <>
-                      <Link
-                        href="/auth"
-                        onClick={() => setSidebarOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white text-sm transition-colors"
-                      >
+                      <Link href="/auth" onClick={() => setSidebarOpen(false)}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
                         <User className="h-5 w-5 text-[#667eea]" />
                         <span>Log in</span>
                       </Link>
-                      <Link
-                        href="/auth"
-                        onClick={() => setSidebarOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white text-sm transition-colors mt-1 mx-1"
-                      >
+                      <Link href="/auth" onClick={() => setSidebarOpen(false)}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white text-sm transition-colors mt-1 mx-1">
                         <User className="h-5 w-5" />
                         <span>Sign up</span>
                       </Link>
