@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/lib/theme-context";
 
+
 // Main map page component wrapped with Suspense
 export default function MapPage() {
   return (
@@ -151,8 +152,9 @@ function MobileBottomSheet({
     </div>
   );
 }
+
 function MapPageContent() {
-  const { user, logout } = useAuth();
+  const { user, logout, initializing } = useAuth();
   const { checkAuth, AuthGuardModal } = useAuthGuard();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -162,6 +164,7 @@ function MapPageContent() {
     const urlRadius = searchParams.get("radius");
     return urlRadius ? parseInt(urlRadius, 10) : 5;
   });
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasShop, setHasShop] = useState(false);
@@ -177,6 +180,7 @@ function MapPageContent() {
   // Load mapType from localStorage on mount, default to 'street'
   const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
   const hasAutoTriggeredRef = useRef(false);
+  
   
   // Load map type from localStorage on first client mount only
   useEffect(() => {
@@ -358,6 +362,17 @@ function MapPageContent() {
     router.push("/auth");
   };
 
+  if (initializing) {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{ background: "var(--background)" }}>
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] animate-pulse" />
+          <div className="absolute inset-0 rounded-2xl blur-xl opacity-40" style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }} />
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex h-screen flex-col bg-[var(--background)]">
         {/* Header */}
@@ -488,9 +503,18 @@ function MapPageContent() {
                       href="/profile"
                       className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-sm font-medium text-[var(--text-gray)] hover:text-[var(--text-dark)] hover:bg-[var(--border-subtle)] transition-all"
                     >
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[10px] text-white font-bold">
-                        {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
-                      </div>
+                      {user?.photoUrl ? (
+  <img
+    src={user.photoUrl}
+    alt="Profile"
+    className="w-6 h-6 rounded-full object-cover border"
+    style={{ borderColor: "var(--border)" }}
+  />
+) : (
+  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[10px] text-white font-bold">
+    {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
+  </div>
+)}
                       <span className="max-w-[80px] truncate">{user?.displayName || user?.email?.split("@")[0]}</span>
                     </Link>
                     <button
@@ -630,9 +654,18 @@ function MapPageContent() {
                     <>
                       <Link href="/profile" onClick={() => setSidebarOpen(false)}
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[9px] text-white font-bold">
-                          {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
-                        </div>
+                        {user?.photoUrl ? (
+  <img
+    src={user.photoUrl}
+    alt="Profile"
+    className="w-5 h-5 rounded-full object-cover border"
+    style={{ borderColor: "var(--border)" }}
+  />
+) : (
+  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[9px] text-white font-bold">
+    {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
+  </div>
+)}
                         <span className="truncate">{user?.displayName || "Profile"}</span>
                       </Link>
                       <button onClick={() => { setSidebarOpen(false); handleLogout(); }}

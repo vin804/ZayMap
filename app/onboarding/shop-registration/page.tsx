@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { ProtectedRoute } from "@/components/protected-route";
+import { useTheme } from "@/lib/theme-context";
 import { uploadImages } from "@/lib/upload";
-import { 
+import { motion, AnimatePresence } from "framer-motion";
+import {
   Store,
   ArrowLeft,
   ArrowRight,
@@ -16,7 +17,12 @@ import {
   MapPin,
   CheckCircle,
   AlertCircle,
-  X
+  X,
+  Sparkles,
+  ImageIcon,
+  Video,
+  ChevronRight,
+  Check,
 } from "lucide-react";
 
 type Language = "en" | "my";
@@ -45,7 +51,6 @@ const TRANSLATIONS = {
     step1: "Shop Info",
     step2: "Contact & Location",
     step3: "Social Media",
-    // Shop Info
     shopName: "Shop Name (English)",
     shopNamePlaceholder: "e.g., Fresh Mart",
     shopNameMM: "Shop Name (Myanmar)",
@@ -66,36 +71,33 @@ const TRANSLATIONS = {
     shopBanner: "Shop Banner",
     uploadBanner: "Upload Banner",
     bannerHint: "Max 5MB, one banner image (optional)",
-    // Contact
     phone: "Phone Number",
     phonePlaceholder: "+959...",
     phoneRequired: "Phone number is required",
     address: "Address",
     addressPlaceholder: "Full address of your shop",
-    // Social
     facebook: "Facebook Page (Optional)",
     facebookPlaceholder: "facebook.com/yourshop",
     tiktok: "TikTok Account (Optional)",
     tiktokPlaceholder: "@yourshop",
-    // Buttons
     next: "Next",
     prev: "Previous",
     createShopBtn: "Create Shop",
     creating: "Creating...",
     english: "English",
     myanmar: "မြန်မာ",
-    // Success
     success: "Shop Created Successfully!",
     successDesc: "Your shop is ready. Start uploading products now.",
     startUploading: "Start Uploading Products",
-    // Errors
+    viewOnMap: "View on Map",
     enterShopName: "Please enter shop name",
     pleaseSelectCategory: "Please select a category",
     enterPhone: "Please enter phone number",
     enterAddress: "Please enter address",
     invalidPhone: "Please enter a valid phone number",
     fileTooLarge: "Logo must be under 5MB",
-    invalidFileType: "Logo must be JPG or PNG",
+    invalidFileType: "Logo must be an image",
+    summary: "Summary",
   },
   my: {
     back: "နောက်သို့",
@@ -104,7 +106,6 @@ const TRANSLATIONS = {
     step1: "ဆိုင်အချက်အလက်",
     step2: "ဆက်သွယ်ရေး",
     step3: "လူမှုကွန်ရက်",
-    // Shop Info
     shopName: "ဆိုင်နာမည် (အင်္ဂလိပ်)",
     shopNamePlaceholder: "ဥပမာ - Fresh Mart",
     shopNameMM: "ဆိုင်နာမည် (မြန်မာ)",
@@ -125,50 +126,115 @@ const TRANSLATIONS = {
     shopBanner: "ဆိုင်ဘန်နာ",
     uploadBanner: "ဘန်နာတင်ပါ",
     bannerHint: "အများဆုံး ၅MB၊ ဘန်နာပုံ ၁ ပုံ (မဖြစ်မနေ မဟုတ်)",
-    // Contact
     phone: "ဖုန်းနံပါတ်",
     phonePlaceholder: "+959...",
     phoneRequired: "ဖုန်းနံပါတ်ထည့်ရန်လိုအပ်",
     address: "လိပ်စာ",
     addressPlaceholder: "ဆိုင်လိပ်စာအပြည့်အစုံ",
-    // Social
     facebook: "Facebook စာမျက်နှာ (မဖြစ်မနေ)",
     facebookPlaceholder: "facebook.com/yourshop",
     tiktok: "TikTok အကောင့် (မဖြစ်မနေ)",
     tiktokPlaceholder: "@yourshop",
-    // Buttons
     next: "ရှေ့သို့",
     prev: "နောက်သို့",
     createShopBtn: "ဆိုင်ဖန်တီးမယ်",
     creating: "ဖန်တီးနေသည်...",
     english: "English",
     myanmar: "မြန်မာ",
-    // Success
     success: "ဆိုင်ဖန်တီးခြင်း အောင်မြင်ပါသည်!",
     successDesc: "သင့်ဆိုင်အဆင်သင့်ဖြစ်ပါပြီ။ ပစ္စည်းများတင်ပါ။",
     startUploading: "ပစ္စည်းစတင်တင်မယ်",
-    // Errors
+    viewOnMap: "မြေပုံမှာ ကြည့်မယ်",
     enterShopName: "ဆိုင်နာမည်ထည့်ပါ",
     selectCategory: "အမျိုးအစားရွေးပါ",
     enterPhone: "ဖုန်းနံပါတ်ထည့်ပါ",
     enterAddress: "လိပ်စာထည့်ပါ",
     invalidPhone: "မှန်ကန်သောဖုန်းနံပါတ်ထည့်ပါ",
     fileTooLarge: "လိုဂို ၅MB ထက်နည်းရမည်",
-    invalidFileType: "လိုဂို JPG သို့မဟုတ် PNG ဖြစ်",
+    invalidFileType: "လိုဂို ပုံစံသာဖြစ်ရမည်",
+    summary: "အကျဉ်းချုပ်",
   },
 };
 
 const CATEGORIES = ["clothes", "electronics", "food", "cosmetics", "second_hand", "other"];
 
+const toastVariants = {
+  hidden: { opacity: 0, y: -16, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: "spring" as const, stiffness: 400, damping: 25 },
+  },
+  exit: { opacity: 0, y: -8, scale: 0.96, transition: { duration: 0.2 } },
+} as const;
+
+const fieldVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.07, duration: 0.35, ease: "easeOut" as const },
+  }),
+} as const;
+
+const stepVariants = {
+  hidden: { opacity: 0, x: 20 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" as const } },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.2 } },
+} as const;
+
+function AutoExpandingTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  style,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className: string;
+  style: React.CSSProperties;
+  rows?: number;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        e.target.style.height = "auto";
+        e.target.style.height = e.target.scrollHeight + "px";
+      }}
+      placeholder={placeholder}
+      rows={rows}
+      className={className}
+      style={{ ...style, minHeight: `${rows * 24 + 24}px` }}
+    />
+  );
+}
+
 export default function ShopRegistrationPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [language, setLanguage] = useState<Language>("en");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [createdShopLocation, setCreatedShopLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [createdShopLocation, setCreatedShopLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
 
@@ -187,7 +253,6 @@ export default function ShopRegistrationPage() {
 
   const t = TRANSLATIONS[language];
 
-  // Load language preference
   useEffect(() => {
     const savedLang = localStorage.getItem("preferred_language") as Language;
     if (savedLang && (savedLang === "en" || savedLang === "my")) {
@@ -210,21 +275,17 @@ export default function ShopRegistrationPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError(t.fileTooLarge);
       return;
     }
-
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       setError(t.invalidFileType);
       return;
     }
 
     setFormData((prev) => ({ ...prev, logo: file }));
-    
-    // Create preview
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setLogoPreview(reader.result as string);
@@ -237,13 +298,11 @@ export default function ShopRegistrationPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Validate total count (max 1)
     if (formData.banners.length + files.length > 1) {
       setError(language === "en" ? "Only 1 banner image allowed" : "ဘန်နာပုံ ၁ ပုံသာခွင့်ပြု");
       return;
     }
 
-    // Validate each file
     for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
         setError(t.fileTooLarge);
@@ -256,8 +315,7 @@ export default function ShopRegistrationPage() {
     }
 
     setFormData((prev) => ({ ...prev, banners: [...prev.banners, ...files] }));
-    
-    // Create previews
+
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -285,7 +343,6 @@ export default function ShopRegistrationPage() {
       case 2:
         if (!formData.phone.trim()) return t.enterPhone;
         if (!formData.address.trim()) return t.enterAddress;
-        // Basic phone validation
         if (!/^\+?[\d\s-]{8,}$/.test(formData.phone)) return t.invalidPhone;
         return null;
       default:
@@ -313,7 +370,6 @@ export default function ShopRegistrationPage() {
     setError(null);
 
     try {
-      // Get user's location
       let location = formData.location;
       if (!location) {
         try {
@@ -325,12 +381,10 @@ export default function ShopRegistrationPage() {
             lng: position.coords.longitude,
           };
         } catch {
-          // Default to Hpa Khant if location not available
           location = { lat: 25.8, lng: 96.3 };
         }
       }
 
-      // Upload logo to Cloudinary if selected
       let logoUrl = "";
       if (formData.logo) {
         const uploadResult = await uploadImages([formData.logo], "shop-logos");
@@ -342,7 +396,6 @@ export default function ShopRegistrationPage() {
         }
       }
 
-      // Upload banners to Cloudinary if selected
       let bannerUrls: string[] = [];
       if (formData.banners.length > 0) {
         const uploadResult = await uploadImages(formData.banners, "shop-banners");
@@ -352,7 +405,6 @@ export default function ShopRegistrationPage() {
         bannerUrls = uploadResult.urls;
       }
 
-      // Create shop in database
       const response = await fetch("/api/shops/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -376,11 +428,9 @@ export default function ShopRegistrationPage() {
         throw new Error(errorData.error || "Failed to create shop");
       }
 
-      // Store location and show success
       setCreatedShopLocation(location);
       setSuccess(true);
-      
-      // Auto-redirect to map after 2 seconds
+
       setTimeout(() => {
         router.push(`/map?lat=${location.lat}&lng=${location.lng}&highlight=new`);
       }, 2000);
@@ -391,340 +441,577 @@ export default function ShopRegistrationPage() {
     }
   };
 
+  const inputBaseClasses =
+    "w-full px-4 py-3 rounded-xl border outline-none transition-all duration-200 focus:ring-2 focus:ring-[#667eea]/30 focus:border-[#667eea]";
+  const inputStyle = {
+    background: "var(--bg-elevated)",
+    borderColor: "var(--border)",
+    color: "var(--fg)",
+  };
+  const labelStyle = { color: "var(--fg)" };
+  const optionalStyle = { color: "var(--fg-muted)" };
+  const helperStyle = { color: "var(--fg-dim)" };
+
   if (success) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-green-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-2">{t.success}</h1>
-          <p className="text-[var(--text-gray)] mb-8">{t.successDesc}</p>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ background: "var(--background)" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="text-center max-w-md w-full rounded-3xl border p-10"
+          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.15 }}
+            className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(34,197,94,0.1)" }}
+          >
+            <CheckCircle className="h-10 w-10 text-emerald-500" />
+          </motion.div>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--fg)" }}>
+            {t.success}
+          </h1>
+          <p className="mb-8" style={{ color: "var(--fg-muted)" }}>
+            {t.successDesc}
+          </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => router.push("/shop/dashboard")}
-              className="px-8 py-4 bg-[#667eea] text-white rounded-xl font-semibold hover:opacity-90 transition-all"
+              className="px-6 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium shadow-lg shadow-purple-500/20"
             >
               {t.startUploading}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => router.push("/map")}
-              className="px-8 py-4 border-2 border-[#667eea] text-[#667eea] rounded-xl font-semibold hover:bg-[#667eea] hover:text-white transition-all"
+              className="px-6 py-3 rounded-xl font-semibold border-2 transition-colors"
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--fg)",
+                background: "var(--bg-elevated)",
+              }}
             >
-              View on Map
-            </button>
+              {t.viewOnMap}
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       {/* Header */}
-      <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      <header
+        className="sticky top-0 z-30 border-b backdrop-blur-xl"
+        style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+      >
+        <div className="max-w-2xl mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => step === 1 ? router.push("/map") : handlePrev()}
-              className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => (step === 1 ? router.push("/map") : handlePrev())}
+              className="flex items-center gap-2 p-2 -ml-2 rounded-xl transition-colors"
+              style={{ color: "var(--fg)" }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "transparent";
+              }}
             >
-              <ArrowLeft className="h-5 w-5 text-[var(--text-gray)]" />
-              <span className="text-[var(--text-gray)]">{t.back}</span>
-            </button>
-            <button
+              <ArrowLeft className="h-5 w-5" />
+              <span className="text-sm font-medium">{t.back}</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={toggleLanguage}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-500/10 rounded-full text-sm font-medium text-[var(--text-gray)] hover:bg-gray-500/20 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors border"
+              style={{
+                background: "var(--bg-hover)",
+                borderColor: "var(--border)",
+                color: "var(--fg-dim)",
+              }}
             >
               <Globe className="h-4 w-4" />
               {language === "en" ? t.english : t.myanmar}
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#667eea] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Store className="h-8 w-8 text-white" />
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-center mb-8"
+        >
+          <div className="relative mx-auto mb-4 w-fit">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <Store className="h-8 w-8 text-white" />
+            </div>
+            <div
+              className="absolute inset-0 rounded-2xl blur-xl opacity-30 -z-10"
+              style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}
+            />
           </div>
-          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-2">{t.createShop}</h1>
-          <p className="text-[var(--text-gray)]">{t.subtitle}</p>
-        </div>
+          <h1 className="text-2xl font-bold mb-1.5" style={{ color: "var(--fg)" }}>
+            {t.createShop}
+          </h1>
+          <p className="text-sm" style={{ color: "var(--fg-muted)" }}>
+            {t.subtitle}
+          </p>
+        </motion.div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={`flex items-center gap-2 ${
-                s < step ? "text-green-500" : s === step ? "text-[#667eea]" : "text-gray-500"
-              }`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  s < step
-                    ? "bg-green-500/20"
-                    : s === step
-                    ? "bg-[#667eea] text-white"
-                    : "bg-gray-500/10"
-                }`}
-              >
-                {s < step ? "✓" : s}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="flex items-center justify-center gap-1 mb-8"
+        >
+          {[1, 2, 3].map((s, idx) => (
+            <div key={s} className="flex items-center">
+              <div className="flex items-center gap-2">
+                <motion.div
+                  animate={{
+                    background:
+                      s < step
+                        ? "linear-gradient(135deg, #22c55e, #16a34a)"
+                        : s === step
+                        ? "linear-gradient(135deg, #667eea, #764ba2)"
+                        : "var(--bg-hover)",
+                    color: s <= step ? "white" : "var(--fg-dim)",
+                    borderColor: s <= step ? "transparent" : "var(--border)",
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border transition-all duration-300"
+                >
+                  {s < step ? <Check className="h-4 w-4" /> : s}
+                </motion.div>
+                <span
+                  className="text-sm font-medium hidden sm:block transition-colors duration-300"
+                  style={{
+                    color: s === step ? "#667eea" : s < step ? "var(--fg)" : "var(--fg-dim)",
+                  }}
+                >
+                  {s === 1 ? t.step1 : s === 2 ? t.step2 : t.step3}
+                </span>
               </div>
-              <span className="text-sm hidden sm:inline">
-                {s === 1 ? t.step1 : s === 2 ? t.step2 : t.step3}
-              </span>
-              {s < 3 && <div className="w-8 h-px bg-gray-500/30 mx-2" />}
+              {idx < 2 && (
+                <div
+                  className="w-8 sm:w-12 h-px mx-2 sm:mx-3 transition-colors duration-300"
+                  style={{
+                    background: s < step ? "#22c55e" : "var(--border)",
+                  }}
+                />
+              )}
             </div>
           ))}
-        </div>
+        </motion.div>
 
-        {/* Form */}
-        <div className="bg-[var(--card-bg)] rounded-2xl shadow-sm border border-gray-200/20 p-6">
-          {step === 1 && (
-            <div className="space-y-6">
-              {/* Shop Name (English) */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.shopName}
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
-                  placeholder={t.shopNamePlaceholder}
-                />
-              </div>
+        {/* Form Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="rounded-3xl border p-6 sm:p-8"
+          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+        >
+          {/* Error */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div
+                key="error"
+                variants={toastVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="mb-6 rounded-2xl border p-4 flex items-start gap-3"
+                style={{
+                  background: "rgba(239,68,68,0.08)",
+                  borderColor: "rgba(239,68,68,0.2)",
+                }}
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-500">{error}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* Shop Name (Myanmar) */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.shopNameMM}
-                </label>
-                <input
-                  type="text"
-                  value={formData.name_mm}
-                  onChange={(e) => handleInputChange("name_mm", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
-                  placeholder={t.shopNameMMPlaceholder}
-                />
-              </div>
+          {/* Step Content */}
+          <AnimatePresence mode="wait">
+            {step === 1 && (
+              <motion.div
+                key="step1"
+                variants={stepVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="space-y-6"
+              >
+                {/* Shop Name */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={0}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.shopName}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    placeholder={t.shopNamePlaceholder}
+                    className={inputBaseClasses}
+                    style={inputStyle}
+                  />
+                </motion.div>
 
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.category}
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => handleInputChange("category", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
-                >
-                  <option value="">{t.selectACategory}</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {t.categories[cat as keyof typeof t.categories]}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {/* Shop Name MM */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={1}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.shopNameMM}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name_mm}
+                    onChange={(e) => handleInputChange("name_mm", e.target.value)}
+                    placeholder={t.shopNameMMPlaceholder}
+                    className={inputBaseClasses}
+                    style={inputStyle}
+                  />
+                </motion.div>
 
-              {/* Logo Upload */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.shopLogo}
-                </label>
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 bg-gray-500/10 rounded-xl flex items-center justify-center overflow-hidden">
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <Store className="h-8 w-8 text-[var(--text-gray)]" />
-                    )}
-                  </div>
-                  <div>
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/10 rounded-lg cursor-pointer hover:bg-gray-500/20 transition-colors">
-                      <Upload className="h-4 w-4 text-[var(--text-gray)]" />
-                      <span className="text-sm font-medium text-[var(--text-dark)]">{t.uploadLogo}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoChange}
-                        className="hidden"
+                {/* Category */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={2}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.category}
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={formData.category}
+                      onChange={(e) => handleInputChange("category", e.target.value)}
+                      className={`${inputBaseClasses} appearance-none cursor-pointer`}
+                      style={inputStyle}
+                    >
+                      <option value="">{t.selectACategory}</option>
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {t.categories[cat as keyof typeof t.categories]}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <ChevronRight
+                        className="h-4 w-4 rotate-90"
+                        style={{ color: "var(--fg-dim)" }}
                       />
-                    </label>
-                    <p className="text-xs text-[var(--text-gray)] mt-1">{t.logoHint}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Banner Upload */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.shopBanner}
-                </label>
-                <div className="space-y-3">
-                  {/* Banner Preview */}
-                  {bannerPreviews.length > 0 && (
-                    <div className="relative aspect-video rounded-lg overflow-hidden max-w-md">
-                      <img src={bannerPreviews[0]} alt="Banner" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => removeBanner(0)}
-                        className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-white rounded-full hover:bg-red-500 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
                     </div>
-                  )}
-                  
-                  {/* Upload Button */}
-                  {bannerPreviews.length < 1 && (
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/10 rounded-lg cursor-pointer hover:bg-gray-500/20 transition-colors">
-                      <Upload className="h-4 w-4 text-[var(--text-gray)]" />
-                      <span className="text-sm font-medium text-[var(--text-dark)]">{t.uploadBanner}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleBannerChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                  <p className="text-xs text-[var(--text-gray)]">{t.bannerHint}</p>
-                </div>
-              </div>
-            </div>
-          )}
+                  </div>
+                </motion.div>
 
-          {step === 2 && (
-            <div className="space-y-6">
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.phone} <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
-                    placeholder={t.phonePlaceholder}
-                  />
-                </div>
-              </div>
+                {/* Logo */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={3}>
+                  <label className="block text-sm font-semibold mb-3" style={labelStyle}>
+                    {t.shopLogo}
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden border-2"
+                      style={{ background: "var(--bg)", borderColor: "var(--border)" }}
+                    >
+                      {logoPreview ? (
+                        <img
+                          src={logoPreview}
+                          alt="Logo"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Store className="h-8 w-8" style={{ color: "var(--fg-dim)" }} />
+                      )}
+                    </div>
+                    <div>
+                      <label
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-[#667eea]/10 border"
+                        style={{ background: "var(--bg-hover)", borderColor: "var(--border)" }}
+                      >
+                        <Upload className="h-4 w-4" style={{ color: "var(--fg-dim)" }} />
+                        <span className="text-sm font-medium" style={{ color: "var(--fg)" }}>
+                          {t.uploadLogo}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs mt-1.5" style={helperStyle}>
+                        {t.logoHint}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
 
-              {/* Address */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.address} <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-4 h-5 w-5 text-[var(--text-gray)]" />
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => handleInputChange("address", e.target.value)}
-                    rows={3}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent resize-none"
-                    placeholder={t.addressPlaceholder}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+                {/* Banner */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={4}>
+                  <label className="block text-sm font-semibold mb-3" style={labelStyle}>
+                    {t.shopBanner}
+                  </label>
+                  <div className="space-y-3">
+                    {bannerPreviews.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative aspect-video rounded-2xl overflow-hidden border max-w-md group"
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        <img
+                          src={bannerPreviews[0]}
+                          alt="Banner"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => removeBanner(0)}
+                          className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <X className="h-4 w-4" />
+                        </motion.button>
+                      </motion.div>
+                    )}
 
-          {step === 3 && (
-            <div className="space-y-6">
-              {/* Facebook */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.facebook}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500 font-bold text-lg">f</span>
-                  <input
-                    type="text"
-                    value={formData.facebook}
-                    onChange={(e) => handleInputChange("facebook", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
-                    placeholder={t.facebookPlaceholder}
-                  />
-                </div>
-              </div>
+                    {bannerPreviews.length < 1 && (
+                      <label
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-[#667eea]/10 border"
+                        style={{ background: "var(--bg-hover)", borderColor: "var(--border)" }}
+                      >
+                        <ImageIcon className="h-4 w-4" style={{ color: "var(--fg-dim)" }} />
+                        <span className="text-sm font-medium" style={{ color: "var(--fg)" }}>
+                          {t.uploadBanner}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerChange}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                    <p className="text-xs" style={helperStyle}>
+                      {t.bannerHint}
+                    </p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
 
-              {/* TikTok */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  {t.tiktok}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-pink-500 font-bold">♪</span>
-                  <input
-                    type="text"
-                    value={formData.tiktok}
-                    onChange={(e) => handleInputChange("tiktok", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl text-[var(--text-dark)] focus:outline-none focus:ring-2 focus:ring-[#667eea] focus:border-transparent"
-                    placeholder={t.tiktokPlaceholder}
-                  />
-                </div>
-              </div>
+            {step === 2 && (
+              <motion.div
+                key="step2"
+                variants={stepVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="space-y-6"
+              >
+                {/* Phone */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={0}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.phone} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone
+                      className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+                      style={{ color: "var(--fg-dim)" }}
+                    />
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      placeholder={t.phonePlaceholder}
+                      className={`${inputBaseClasses} pl-12`}
+                      style={inputStyle}
+                    />
+                  </div>
+                </motion.div>
 
-              {/* Summary */}
-              <div className="bg-gray-500/10 rounded-xl p-4 mt-6">
-                <h4 className="font-medium text-[var(--text-dark)] mb-3">
-                  {language === "en" ? "Summary" : "အကျဉ်းချုပ်"}
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <p><span className="text-[var(--text-gray)] font-medium">{t.shopName}:</span> <span className="text-[var(--text-dark)]">{formData.name}</span></p>
-                  <p><span className="text-[var(--text-gray)] font-medium">{t.category}:</span> <span className="text-[var(--text-dark)]">{t.categories[formData.category as keyof typeof t.categories]}</span></p>
-                  <p><span className="text-[var(--text-gray)] font-medium">{t.phone}:</span> <span className="text-[var(--text-dark)]">{formData.phone}</span></p>
-                </div>
-              </div>
-            </div>
-          )}
+                {/* Address */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={1}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.address} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <MapPin
+                      className="absolute left-4 top-3.5 h-5 w-5"
+                      style={{ color: "var(--fg-dim)" }}
+                    />
+                    <AutoExpandingTextarea
+                      value={formData.address}
+                      onChange={(value) => handleInputChange("address", value)}
+                      placeholder={t.addressPlaceholder}
+                      className={`${inputBaseClasses} resize-none overflow-hidden pl-12`}
+                      style={inputStyle}
+                      rows={2}
+                    />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-500 text-sm">{error}</p>
-            </div>
-          )}
+            {step === 3 && (
+              <motion.div
+                key="step3"
+                variants={stepVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="space-y-6"
+              >
+                {/* Facebook */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={0}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.facebook}
+                  </label>
+                  <div className="relative">
+                    <Globe
+  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+  style={{ color: "var(--fg-dim)" }}
+/>
+                    <input
+                      type="text"
+                      value={formData.facebook}
+                      onChange={(e) => handleInputChange("facebook", e.target.value)}
+                      placeholder={t.facebookPlaceholder}
+                      className={`${inputBaseClasses} pl-12`}
+                      style={inputStyle}
+                    />
+                  </div>
+                </motion.div>
 
-          {/* Navigation Buttons */}
+                {/* TikTok */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={1}>
+                  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                    {t.tiktok}
+                  </label>
+                  <div className="relative">
+                    <Video
+                      className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+                      style={{ color: "var(--fg-dim)" }}
+                    />
+                    <input
+                      type="text"
+                      value={formData.tiktok}
+                      onChange={(e) => handleInputChange("tiktok", e.target.value)}
+                      placeholder={t.tiktokPlaceholder}
+                      className={`${inputBaseClasses} pl-12`}
+                      style={inputStyle}
+                    />
+                  </div>
+                </motion.div>
+
+                {/* Summary */}
+                <motion.div
+                  variants={fieldVariants}
+                  initial="hidden"
+                  animate="visible"
+                  custom={2}
+                  className="rounded-2xl border p-5"
+                  style={{ background: "var(--bg)", borderColor: "var(--border)" }}
+                >
+                  <h4 className="font-semibold text-sm mb-3" style={{ color: "var(--fg)" }}>
+                    {t.summary}
+                  </h4>
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--fg-dim)" }}>{t.shopName}</span>
+                      <span className="font-medium" style={{ color: "var(--fg)" }}>
+                        {formData.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--fg-dim)" }}>{t.category}</span>
+                      <span className="font-medium" style={{ color: "var(--fg)" }}>
+                        {t.categories[formData.category as keyof typeof t.categories]}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--fg-dim)" }}>{t.phone}</span>
+                      <span className="font-medium" style={{ color: "var(--fg)" }}>
+                        {formData.phone}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--fg-dim)" }}>{t.address}</span>
+                      <span className="font-medium text-right max-w-[60%]" style={{ color: "var(--fg)" }}>
+                        {formData.address}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Navigation */}
           <div className="mt-8 flex gap-3">
             {step > 1 && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handlePrev}
-                className="flex-1 py-3 px-4 border border-gray-200/20 text-[var(--text-gray)] rounded-xl font-medium hover:bg-gray-500/10 transition-colors"
+                className="flex-1 py-3 px-4 rounded-xl font-medium transition-colors border"
+                style={{
+                  background: "var(--bg-hover)",
+                  borderColor: "var(--border)",
+                  color: "var(--fg)",
+                }}
               >
                 {t.prev}
-              </button>
+              </motion.button>
             )}
-            <button
+            <motion.button
+              whileHover={!loading ? { scale: 1.02 } : {}}
+              whileTap={!loading ? { scale: 0.98 } : {}}
               onClick={step === 3 ? handleSubmit : handleNext}
               disabled={loading}
-              className="flex-1 py-3 px-4 bg-[#667eea] text-white rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 px-4 text-white rounded-xl font-medium shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{
+                background: "linear-gradient(135deg, #667eea, #764ba2)",
+              }}
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
+                <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {t.creating}
-                </span>
+                  <span>{t.creating}</span>
+                </>
               ) : step === 3 ? (
-                t.createShopBtn
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  <span>{t.createShopBtn}</span>
+                </>
               ) : (
-                <span className="flex items-center justify-center gap-2">
-                  {t.next}
+                <>
+                  <span>{t.next}</span>
                   <ArrowRight className="h-4 w-4" />
-                </span>
+                </>
               )}
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </main>
     </div>
   );

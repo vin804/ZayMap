@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { ProtectedRoute } from "@/components/protected-route";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Package,
@@ -11,7 +13,12 @@ import {
   AlertCircle,
   RefreshCw,
   CheckCircle,
-  Clock
+  Clock,
+  Sparkles,
+  Zap,
+  ShieldCheck,
+  CalendarDays,
+  ChevronRight,
 } from "lucide-react";
 
 interface Product {
@@ -24,9 +31,34 @@ interface Product {
   created_at: string;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: "spring", stiffness: 300, damping: 24 },
+  },
+};
+
+const toastVariants = {
+  hidden: { opacity: 0, y: -20, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 25 } },
+  exit: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.2 } },
+};
+
 export default function RenewProductsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -46,10 +78,10 @@ export default function RenewProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       if (!user?.uid) return;
-      
+
       try {
         setLoading(true);
-        
+
         // Fetch shop
         const shopRes = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
         if (!shopRes.ok) {
@@ -91,7 +123,7 @@ export default function RenewProductsPage() {
     if (selectedProducts.size === products.length) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(products.map(p => p.product_id)));
+      setSelectedProducts(new Set(products.map((p) => p.product_id)));
     }
   };
 
@@ -103,7 +135,7 @@ export default function RenewProductsPage() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     return `${diffDays} days ago`;
@@ -146,31 +178,33 @@ export default function RenewProductsPage() {
       });
 
       await Promise.all(promises);
-      
+
       // Update local state to reflect new timestamps
       const now = new Date().toISOString();
-      setProducts(products.map(p => 
-        selectedProducts.has(p.product_id) 
-          ? { ...p, upload_timestamp: now, updated_at: now }
-          : p
-      ));
-      
+      setProducts(
+        products.map((p) =>
+          selectedProducts.has(p.product_id)
+            ? { ...p, upload_timestamp: now, updated_at: now }
+            : p
+        )
+      );
+
       setSuccess(`Successfully renewed ${selectedProducts.size} product(s)`);
       setSelectedProducts(new Set());
-      
+
       // Refresh products to get updated timestamps from server
       setTimeout(() => {
         if (user?.uid) {
           fetch(`/api/shops/my-shop?owner_id=${user.uid}`)
-            .then(res => res.json())
-            .then(shopData => {
+            .then((res) => res.json())
+            .then((shopData) => {
               const shopId = shopData.data?.shop_id;
               if (shopId) {
                 return fetch(`/api/shops/${shopId}/products`);
               }
             })
-            .then(res => res?.json())
-            .then(data => {
+            .then((res) => res?.json())
+            .then((data) => {
               if (data?.data?.products) {
                 setProducts(data.data.products);
               }
@@ -178,7 +212,7 @@ export default function RenewProductsPage() {
             .catch(console.error);
         }
       }, 500);
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -190,203 +224,449 @@ export default function RenewProductsPage() {
     }
   };
 
+  const selectedCount = selectedProducts.size;
+  const totalCount = products.length;
+  const allSelected = totalCount > 0 && selectedCount === totalCount;
+
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[var(--background)]">
+      <div className="min-h-screen" style={{ background: "var(--background)" }}>
         {/* Header */}
-        <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <button
+        <header
+          className="sticky top-0 z-30 border-b backdrop-blur-xl"
+          style={{
+            background: "var(--bg-elevated)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <div className="max-w-4xl mx-auto px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => router.push("/shop/dashboard")}
-                className="p-2 hover:bg-gray-500/10 rounded-lg transition-colors"
+                className="p-2 rounded-xl transition-colors"
+                style={{ color: "var(--fg)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "transparent";
+                }}
               >
-                <ArrowLeft className="h-5 w-5 text-[var(--text-dark)]" />
-              </button>
-              <h1 className="text-xl font-semibold text-[var(--text-dark)]">Renew Products</h1>
+                <ArrowLeft className="h-5 w-5" />
+              </motion.button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20">
+                  <RefreshCw className="h-4 w-4 text-white" />
+                </div>
+                <h1 className="text-lg font-bold" style={{ color: "var(--fg)" }}>
+                  Renew Products
+                </h1>
+              </div>
             </div>
           </div>
         </header>
 
         <main className="max-w-4xl mx-auto px-4 py-6">
+          {/* Animated Toasts */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div
+                key="error"
+                variants={toastVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="mb-5 rounded-2xl border p-4 flex items-start gap-3 shadow-lg"
+                style={{
+                  background: "rgba(239,68,68,0.08)",
+                  borderColor: "rgba(239,68,68,0.2)",
+                }}
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-500">{error}</p>
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div
+                key="success"
+                variants={toastVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="mb-5 rounded-2xl border p-4 flex items-start gap-3 shadow-lg"
+                style={{
+                  background: "rgba(34,197,94,0.08)",
+                  borderColor: "rgba(34,197,94,0.2)",
+                }}
+              >
+                <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-emerald-500">{success}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Info Card */}
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <RefreshCw className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-blue-500">{translations[language].renewHeading}</h3>
-                <p className="text-sm text-blue-400 mt-1">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="rounded-2xl border p-5 mb-6 relative overflow-hidden"
+            style={{
+              background: "var(--bg-elevated)",
+              borderColor: "var(--border)",
+            }}
+          >
+            <div
+              className="absolute top-0 right-0 w-32 h-32 opacity-[0.03] pointer-events-none"
+              style={{
+                background: "radial-gradient(circle, #667eea 0%, transparent 70%)",
+              }}
+            />
+            <div className="flex items-start gap-4 relative z-10">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-[#667eea]/20 to-[#764ba2]/20 flex items-center justify-center border border-[#667eea]/20">
+                <Sparkles className="h-5 w-5 text-[#667eea]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-sm" style={{ color: "var(--fg)" }}>
+                  {translations[language].renewHeading}
+                </h3>
+                <p className="text-sm mt-1 leading-relaxed" style={{ color: "var(--fg-muted)" }}>
                   {translations[language].renewBody}
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Error/Success Messages */}
-          {error && (
-            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              <p className="text-red-500">{error}</p>
-            </div>
-          )}
-          
-          {success && (
-            <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <p className="text-green-500">{success}</p>
-            </div>
-          )}
+          </motion.div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#667eea]" />
-            </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-20 gap-4"
+            >
+              <div className="relative">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center animate-pulse">
+                  <RefreshCw className="h-6 w-6 text-white animate-spin" />
+                </div>
+                <div
+                  className="absolute inset-0 rounded-2xl blur-xl opacity-40"
+                  style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}
+                />
+              </div>
+              <p className="text-sm font-medium" style={{ color: "var(--fg-muted)" }}>
+                Loading your products...
+              </p>
+            </motion.div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12 bg-[var(--card-bg)] rounded-xl border border-gray-200/20">
-              <Package className="h-16 w-16 text-[var(--text-gray)] mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-[var(--text-dark)] mb-2">No products yet</h3>
-              <p className="text-[var(--text-gray)] mb-4">Add some products first to renew them</p>
-              <button
-                onClick={() => router.push("/shop/products/add")}
-                className="px-6 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium"
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-20 rounded-3xl border"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--border)",
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#667eea]/10 to-[#764ba2]/10 flex items-center justify-center border border-[#667eea]/10"
               >
-                Add Product
-              </button>
-            </div>
+                <Package className="h-10 w-10 text-[#667eea]" />
+              </motion.div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--fg)" }}>
+                No products yet
+              </h3>
+              <p className="text-sm mb-6 max-w-xs mx-auto" style={{ color: "var(--fg-muted)" }}>
+                Add some products first, then come back here to keep them fresh
+              </p>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => router.push("/shop/products/add")}
+                className="px-6 py-2.5 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-shadow"
+              >
+                Add Your First Product
+              </motion.button>
+            </motion.div>
           ) : (
             <>
               {/* Actions Bar */}
-              <div className="bg-[var(--card-bg)] rounded-xl border border-gray-200/20 p-4 mb-4">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="rounded-2xl border p-4 mb-5 sticky top-20 z-20 backdrop-blur-xl"
+                style={{
+                  background: "var(--bg-elevated)",
+                  borderColor: "var(--border)",
+                }}
+              >
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedProducts.size === products.length && products.length > 0}
-                        onChange={toggleSelectAll}
-                        className="w-5 h-5 rounded border-gray-500/30 bg-[var(--card-bg)] text-[#667eea] focus:ring-[#667eea]"
-                      />
-                      <span className="text-sm font-medium text-black">
-                        {selectedProducts.size === products.length ? "Deselect All" : "Select All"}
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          className="peer sr-only"
+                        />
+                        <div
+                          className="w-5 h-5 rounded-md border-2 transition-all duration-200 flex items-center justify-center"
+                          style={{
+                            borderColor: allSelected ? "#667eea" : "var(--border)",
+                            background: allSelected
+                              ? "linear-gradient(135deg, #667eea, #764ba2)"
+                              : "var(--bg-elevated)",
+                          }}
+                        >
+                          {allSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                        </div>
+                      </div>
+                      <span
+                        className="text-sm font-medium transition-colors"
+                        style={{ color: "var(--fg)" }}
+                      >
+                        {allSelected ? "Deselect All" : "Select All"}
                       </span>
                     </label>
-                    <span className="text-sm text-black">
-                      ({selectedProducts.size} selected)
+                    <span
+                      className="text-xs font-medium px-2.5 py-1 rounded-full"
+                      style={{
+                        background: selectedCount > 0 ? "rgba(102,126,234,0.1)" : "var(--bg-hover)",
+                        color: selectedCount > 0 ? "#667eea" : "var(--fg-dim)",
+                      }}
+                    >
+                      {selectedCount} of {totalCount} selected
                     </span>
                   </div>
-                  
-                  <button
+
+                  <motion.button
+                    whileHover={selectedCount > 0 && !renewing ? { scale: 1.03 } : {}}
+                    whileTap={selectedCount > 0 && !renewing ? { scale: 0.97 } : {}}
                     onClick={handleRenew}
-                    disabled={renewing || selectedProducts.size === 0}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={renewing || selectedCount === 0}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white shadow-lg shadow-purple-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                    style={{
+                      background:
+                        selectedCount > 0 && !renewing
+                          ? "linear-gradient(135deg, #667eea, #764ba2)"
+                          : "var(--bg-hover)",
+                      color: selectedCount > 0 && !renewing ? "white" : "var(--fg-dim)",
+                    }}
                   >
                     {renewing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Renewing...
+                        <span>Renewing...</span>
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="h-4 w-4" />
-                        Renew Selected
+                        <Zap className="h-4 w-4" />
+                        <span>Renew Selected</span>
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Products List */}
-              <div className="bg-[var(--card-bg)] rounded-xl border border-gray-200/20 overflow-hidden">
-                <div className="divide-y divide-gray-200/20">
-                  {products.map((product) => {
-                    const isSelected = selectedProducts.has(product.product_id);
-                    const dateStr = product.updated_at || product.created_at;
-                    const lastUpdated = dateStr ? new Date(dateStr) : new Date();
-                    const isValidDate = !isNaN(lastUpdated.getTime());
-                    const daysSinceUpdate = isValidDate 
-                      ? Math.floor((Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24))
-                      : Infinity; // Invalid dates are treated as "needs renew"
-                    const isFresh = isValidDate && daysSinceUpdate <= 1;
-                    const isRecent = isValidDate && daysSinceUpdate >= 2 && daysSinceUpdate <= 7;
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="space-y-3"
+              >
+                {products.map((product, index) => {
+                  const isSelected = selectedProducts.has(product.product_id);
+                  const dateStr = product.updated_at || product.created_at;
+                  const lastUpdated = dateStr ? new Date(dateStr) : new Date();
+                  const isValidDate = !isNaN(lastUpdated.getTime());
+                  const daysSinceUpdate = isValidDate
+                    ? Math.floor(
+                        (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24)
+                      )
+                    : Infinity;
+                  const isFresh = isValidDate && daysSinceUpdate <= 1;
+                  const isRecent = isValidDate && daysSinceUpdate >= 2 && daysSinceUpdate <= 7;
 
-                    return (
+                  const statusConfig = isFresh
+                    ? {
+                        label: "Fresh",
+                        bg: "rgba(34,197,94,0.1)",
+                        border: "rgba(34,197,94,0.2)",
+                        text: "#22c55e",
+                        icon: ShieldCheck,
+                      }
+                    : isRecent
+                    ? {
+                        label: "Recent",
+                        bg: "rgba(245,158,11,0.1)",
+                        border: "rgba(245,158,11,0.2)",
+                        text: "#f59e0b",
+                        icon: CalendarDays,
+                      }
+                    : {
+                        label: "Needs Renew",
+                        bg: "rgba(239,68,68,0.1)",
+                        border: "rgba(239,68,68,0.2)",
+                        text: "#ef4444",
+                        icon: Clock,
+                      };
+
+                  const StatusIcon = statusConfig.icon;
+
+                  return (
+                    <motion.div
+                      key={product.product_id}
+                      variants={itemVariants}
+                      layout
+                      onClick={() => toggleProduct(product.product_id)}
+                      className="group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200"
+                      style={{
+                        background: isSelected
+                          ? "rgba(102,126,234,0.06)"
+                          : "var(--bg-elevated)",
+                        borderColor: isSelected
+                          ? "rgba(102,126,234,0.3)"
+                          : "var(--border)",
+                      }}
+                      whileHover={{
+                        y: -2,
+                        boxShadow:
+                          theme === "dark"
+                            ? "0 8px 30px rgba(0,0,0,0.3)"
+                            : "0 8px 30px rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      {/* Selection indicator line */}
                       <div
-                        key={product.product_id}
-                        className={`p-4 flex items-center gap-4 hover:bg-gray-500/10 transition-colors cursor-pointer ${
-                          isSelected ? "bg-blue-500/10" : ""
-                        }`}
-                        onClick={() => toggleProduct(product.product_id)}
-                      >
+                        className="absolute left-0 top-4 bottom-4 w-1 rounded-full transition-all duration-300"
+                        style={{
+                          background: isSelected
+                            ? "linear-gradient(180deg, #667eea, #764ba2)"
+                            : "transparent",
+                          opacity: isSelected ? 1 : 0,
+                        }}
+                      />
+
+                      <div className="flex items-center gap-4">
+                        {/* Checkbox */}
                         <div className="flex-shrink-0">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleProduct(product.product_id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-5 h-5 rounded border-gray-500/30 bg-[var(--card-bg)] text-[#667eea] focus:ring-[#667eea]"
-                          />
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleProduct(product.product_id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="peer sr-only"
+                            />
+                            <div
+                              className="w-5 h-5 rounded-md border-2 transition-all duration-200 flex items-center justify-center"
+                              style={{
+                                borderColor: isSelected
+                                  ? "#667eea"
+                                  : "var(--border)",
+                                background: isSelected
+                                  ? "linear-gradient(135deg, #667eea, #764ba2)"
+                                  : "var(--bg-elevated)",
+                              }}
+                            >
+                              {isSelected && (
+                                <CheckCircle className="h-3.5 w-3.5 text-white" />
+                              )}
+                            </div>
+                          </div>
                         </div>
 
                         {/* Product Image */}
-                        <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden border"
+                          style={{ background: "var(--bg)", borderColor: "var(--border)" }}>
                           {product.image_urls?.[0] ? (
                             <img
                               src={product.image_urls[0]}
                               alt={product.product_name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                             />
                           ) : (
-                            <Package className="h-8 w-8 text-gray-400" />
+                            <Package className="h-7 w-7" style={{ color: "var(--fg-dim)" }} />
                           )}
                         </div>
 
                         {/* Product Info */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-[var(--text-dark)] truncate">
+                          <h3
+                            className="font-medium text-sm truncate group-hover:text-[#667eea] transition-colors"
+                            style={{ color: "var(--fg)" }}
+                          >
                             {product.product_name}
                           </h3>
-                          <p className="text-sm text-[#667eea] font-semibold">
+                          <p className="text-sm font-bold mt-0.5" style={{ color: "#667eea" }}>
                             {product.price?.toLocaleString() || "0"} MMK
                           </p>
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                            <Clock className="h-3 w-3" />
-                            <span>
+                          <div className="flex items-center gap-1.5 text-xs mt-1.5">
+                            <StatusIcon
+                              className="h-3 w-3"
+                              style={{ color: statusConfig.text }}
+                            />
+                            <span style={{ color: "var(--fg-dim)" }}>
                               {isValidDate ? (
-                                <span className={
-                                  isFresh ? "text-green-500 font-medium" :
-                                  isRecent ? "text-orange-500 font-medium" :
-                                  "text-red-500 font-medium"
-                                }>
+                                <span style={{ color: statusConfig.text, fontWeight: 500 }}>
                                   Updated {getRelativeTime(lastUpdated.toISOString())}
                                 </span>
                               ) : (
-                                <span className="text-gray-500">No update date</span>
+                                <span style={{ color: "var(--fg-dim)" }}>No update date</span>
                               )}
                             </span>
                           </div>
                         </div>
 
                         {/* Status Badge */}
-                        <div className="flex-shrink-0">
-                          {isFresh ? (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-lg font-medium">
-                              Fresh
-                            </span>
-                          ) : isRecent ? (
-                            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-lg font-medium">
-                              Recent
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-lg font-medium">
-                              Needs Renew
-                            </span>
-                          )}
+                        <div className="flex-shrink-0 hidden sm:block">
+                          <span
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border"
+                            style={{
+                              background: statusConfig.bg,
+                              borderColor: statusConfig.border,
+                              color: statusConfig.text,
+                            }}
+                          >
+                            <StatusIcon className="h-3 w-3" />
+                            {statusConfig.label}
+                          </span>
                         </div>
+
+                        {/* Chevron */}
+                        <ChevronRight
+                          className="h-4 w-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0"
+                          style={{ color: "var(--fg-dim)" }}
+                        />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+
+              {/* Bottom summary */}
+              {selectedCount > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 text-center"
+                >
+                  <p className="text-sm" style={{ color: "var(--fg-muted)" }}>
+                    <span className="font-semibold" style={{ color: "#667eea" }}>
+                      {selectedCount}
+                    </span>{" "}
+                    product{selectedCount !== 1 ? "s" : ""} selected for renewal
+                  </p>
+                </motion.div>
+              )}
             </>
           )}
         </main>

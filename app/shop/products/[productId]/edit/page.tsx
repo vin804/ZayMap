@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { uploadImages } from "@/lib/upload";
 import { ProtectedRoute } from "@/components/protected-route";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
   ArrowLeft,
@@ -14,7 +16,11 @@ import {
   DollarSign,
   ImagePlus,
   X,
-  Save
+  Save,
+  Pencil,
+  Sparkles,
+  Trash2,
+  Camera,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -36,11 +42,27 @@ interface ProductFormData {
   existingImages: string[];
 }
 
+const toastVariants = {
+  hidden: { opacity: 0, y: -16, scale: 0.96 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 400, damping: 25 } },
+  exit: { opacity: 0, y: -8, scale: 0.96, transition: { duration: 0.2 } },
+} as const;
+
+const fieldVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.06, duration: 0.35, ease: "easeOut" as const },
+  }),
+} as const;
+
 export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
   const productId = params.productId as string;
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [shopId, setShopId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,7 +70,7 @@ export default function EditProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  
+
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     name_mm: "",
@@ -62,16 +84,16 @@ export default function EditProductPage() {
   // Load product data once on mount
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadData = async () => {
       const uid = user?.uid;
       const pid = productId;
-      
+
       if (!uid || !pid) return;
-      
+
       try {
         setLoading(true);
-        
+
         // Fetch shop
         const shopRes = await fetch(`/api/shops/my-shop?owner_id=${uid}`);
         if (!shopRes.ok) {
@@ -115,12 +137,13 @@ export default function EditProductPage() {
         if (isMounted) setLoading(false);
       }
     };
-    
+
     loadData();
-    
-    return () => { isMounted = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps = run once on mount
+
+    return () => {
+      isMounted = false;
+    };
+     }, [user?.uid, productId]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -146,13 +169,13 @@ export default function EditProductPage() {
       }
     }
 
-    setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
-    
+    setFormData((prev) => ({ ...prev, images: [...prev.images, ...files] }));
+
     // Create previews
-    files.forEach(file => {
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreviews(prev => [...prev, reader.result as string]);
+        setImagePreviews((prev) => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
     });
@@ -162,22 +185,22 @@ export default function EditProductPage() {
 
   const removeImage = (index: number) => {
     const isExisting = index < formData.existingImages.length;
-    
+
     if (isExisting) {
       // Remove from existing images
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        existingImages: prev.existingImages.filter((_, i) => i !== index)
+        existingImages: prev.existingImages.filter((_, i) => i !== index),
       }));
     } else {
       // Remove from new images
       const newIndex = index - formData.existingImages.length;
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        images: prev.images.filter((_, i) => i !== newIndex)
+        images: prev.images.filter((_, i) => i !== newIndex),
       }));
     }
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -241,236 +264,444 @@ export default function EditProductPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 text-[#667eea] animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading product...</p>
-        </div>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--background)" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative mx-auto mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center animate-pulse">
+              <Pencil className="h-7 w-7 text-white" />
+            </div>
+            <div
+              className="absolute inset-0 rounded-2xl blur-xl opacity-40"
+              style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}
+            />
+          </div>
+          <p className="text-sm font-medium" style={{ color: "var(--fg-muted)" }}>
+            Loading product...
+          </p>
+        </motion.div>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Product Updated!</h1>
-          <p className="text-gray-600 mb-8">Your product changes have been saved.</p>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ background: "var(--background)" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="text-center max-w-md w-full rounded-3xl border p-10"
+          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.15 }}
+            className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(34,197,94,0.1)" }}
+          >
+            <CheckCircle className="h-10 w-10 text-emerald-500" />
+          </motion.div>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--fg)" }}>
+            Product Updated!
+          </h1>
+          <p className="mb-8" style={{ color: "var(--fg-muted)" }}>
+            Your product changes have been saved successfully.
+          </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => router.push("/shop/dashboard")}
-              className="px-8 py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              className="px-6 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold shadow-lg shadow-purple-500/20 hover:shadow-xl transition-shadow"
             >
               Back to Dashboard
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setSuccess(false)}
-              className="px-8 py-4 border-2 border-[#667eea] text-[#667eea] rounded-xl font-semibold hover:bg-[#667eea] hover:text-white transition-all"
+              className="px-6 py-3 rounded-xl font-semibold border-2 transition-colors"
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--fg)",
+                background: "var(--bg-elevated)",
+              }}
             >
               Edit Again
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
+  const inputBaseClasses =
+    "w-full px-4 py-3 rounded-xl border outline-none transition-all duration-200 focus:ring-2 focus:ring-[#667eea]/30 focus:border-[#667eea]";
+  const inputStyle = {
+    background: "var(--bg-elevated)",
+    borderColor: "var(--border)",
+    color: "var(--fg)",
+  };
+  const labelStyle = { color: "var(--fg)" };
+  const helperStyle = { color: "var(--fg-dim)" };
+  const optionalStyle = { color: "var(--fg-muted)" };
+
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: "var(--background)" }}>
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => router.push("/shop/dashboard")}
-                  className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <ArrowLeft className="h-5 w-5 text-gray-600" />
-                </button>
-                <h1 className="text-xl font-semibold text-gray-900">Edit Product</h1>
+        <header
+          className="sticky top-0 z-30 border-b backdrop-blur-xl"
+          style={{
+            background: "var(--bg-elevated)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <div className="max-w-3xl mx-auto px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push("/shop/dashboard")}
+                className="p-2 rounded-xl transition-colors"
+                style={{ color: "var(--fg)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "transparent";
+                }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </motion.button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20">
+                  <Pencil className="h-4 w-4 text-white" />
+                </div>
+                <h1 className="text-lg font-bold" style={{ color: "var(--fg)" }}>
+                  Edit Product
+                </h1>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-6">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-            </div>
-          )}
+        <main className="max-w-3xl mx-auto px-4 py-6">
+          {/* Animated Toasts */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div
+                key="error"
+                variants={toastVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="mb-5 rounded-2xl border p-4 flex items-start gap-3 shadow-lg"
+                style={{
+                  background: "rgba(239,68,68,0.08)",
+                  borderColor: "rgba(239,68,68,0.2)",
+                }}
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-500">{error}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <motion.form
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-3xl border p-6 sm:p-8 space-y-6"
+            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+          >
             {/* Product Name */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={0}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Product Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="Enter product name"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                className={inputBaseClasses}
+                style={inputStyle}
                 required
               />
-            </div>
+            </motion.div>
 
             {/* Product Name (Myanmar) */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Name (Myanmar) <span className="text-gray-400">(Optional)</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={1}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                Product Name (Myanmar){" "}
+                <span className="font-normal" style={optionalStyle}>
+                  (Optional)
+                </span>
               </label>
               <input
                 type="text"
                 value={formData.name_mm}
-                onChange={(e) => setFormData(prev => ({ ...prev, name_mm: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name_mm: e.target.value }))}
                 placeholder="မြန်မာဘာသာဖြင့် ထည့်ပါ"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                className={inputBaseClasses}
+                style={inputStyle}
               />
-            </div>
+            </motion.div>
 
-            {/* Description */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description <span className="text-gray-400">(Optional)</span>
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Describe your product..."
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900 resize-none"
-              />
-            </div>
-
+{/* Description - Auto-expanding editable textarea */}
+<motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={2}>
+  <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+    Description{" "}
+    <span className="font-normal" style={optionalStyle}>
+      (Optional)
+    </span>
+  </label>
+  <AutoExpandingTextarea
+    value={formData.description}
+    onChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
+    placeholder="Describe your product..."
+    className={`${inputBaseClasses} resize-none overflow-hidden`}
+    style={inputStyle}
+  />
+</motion.div>
             {/* Price */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={3}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Product Price <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <DollarSign
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+                  style={{ color: "var(--fg-dim)" }}
+                />
                 <input
                   type="number"
                   value={formData.price || ""}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Remove leading zeros and convert to number
                     const numValue = value === "" ? 0 : parseInt(value.replace(/^0+/, ""), 10) || 0;
-                    setFormData(prev => ({ ...prev, price: numValue }));
+                    setFormData((prev) => ({ ...prev, price: numValue }));
                   }}
                   min={1}
-                  className="w-full pl-12 pr-16 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900"
+                  className={`${inputBaseClasses} pl-12 pr-16`}
+                  style={inputStyle}
                   required
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">MMK</span>
+                <span
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                  style={{ color: "var(--fg-dim)" }}
+                >
+                  MMK
+                </span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Actual price of the product</p>
-            </div>
+              <p className="text-xs mt-1.5" style={helperStyle}>
+                Actual price of the product
+              </p>
+            </motion.div>
 
             {/* Category */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={4}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Category <span className="text-red-500">*</span>
               </label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-gray-900 bg-white"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="relative">
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                  className={`${inputBaseClasses} appearance-none cursor-pointer`}
+                  style={inputStyle}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg
+                    className="w-4 h-4"
+                    style={{ color: "var(--fg-dim)" }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Images */}
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-black mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={5}>
+              <label className="block text-sm font-semibold mb-1" style={labelStyle}>
                 Product Images <span className="text-red-500">*</span>
               </label>
-              <p className="text-sm text-gray-500 mb-3">
+              <p className="text-xs mb-4" style={helperStyle}>
                 Upload up to 5 images (max 5MB each)
               </p>
-              
-              {/* Image Preview */}
-              {imagePreviews.length > 0 && (
-                <div className="flex flex-wrap gap-3 mb-4">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative w-24 h-24 bg-gray-100 rounded-xl overflow-hidden">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+
+              {/* Image Grid */}
+              <AnimatePresence>
+                {imagePreviews.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex flex-wrap gap-3 mb-4"
+                  >
+                    {imagePreviews.map((preview, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        layout
+                        className="relative w-24 h-24 rounded-2xl overflow-hidden border group"
+                        style={{ borderColor: "var(--border)" }}
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all" />
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1.5 right-1.5 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </motion.button>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Add Image Button */}
-              {imagePreviews.length < 5 && (
-                <label className="flex items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#667eea] hover:bg-[#667eea]/5 transition-all cursor-pointer">
-                  <div className="text-center">
-                    <ImagePlus className="h-5 w-5 text-black mx-auto mb-1" />
-                    <span className="text-black font-medium text-sm">Add Image</span>
-                    <span className="text-xs text-gray-400 block mt-1">
-                      {imagePreviews.length}/5
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
+              <AnimatePresence>
+                {imagePreviews.length < 5 && (
+                  <motion.label
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex items-center justify-center gap-2 w-28 h-28 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-200 hover:border-[#667eea] hover:bg-[#667eea]/5"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <div className="text-center">
+                      <Camera className="h-5 w-5 mx-auto mb-1" style={{ color: "var(--fg-dim)" }} />
+                      <span className="text-xs font-medium" style={{ color: "var(--fg)" }}>
+                        Add Image
+                      </span>
+                      <span className="text-[10px] block mt-0.5" style={{ color: "var(--fg-dim)" }}>
+                        {imagePreviews.length}/5
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </motion.label>
+                )}
+              </AnimatePresence>
+            </motion.div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            <motion.div
+              variants={fieldVariants}
+              initial="hidden"
+              animate="visible"
+              custom={6}
+              className="pt-2"
             >
-              {uploadLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Uploading images...</span>
-                </>
-              ) : saving ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-5 w-5" />
-                  <span>Save Changes</span>
-                </>
-              )}
-            </button>
-          </form>
+              <motion.button
+                whileHover={!saving ? { scale: 1.01 } : {}}
+                whileTap={!saving ? { scale: 0.99 } : {}}
+                type="submit"
+                disabled={saving}
+                className="w-full py-3.5 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
+                style={{
+                  background: "linear-gradient(135deg, #667eea, #764ba2)",
+                }}
+              >
+                {uploadLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Uploading images...</span>
+                  </>
+                ) : saving ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Saving changes...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5" />
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </motion.button>
+            </motion.div>
+          </motion.form>
         </main>
       </div>
     </ProtectedRoute>
+  );
+}
+
+function AutoExpandingTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  style,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className: string;
+  style: React.CSSProperties;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize on mount and whenever value changes
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        e.target.style.height = "auto";
+        e.target.style.height = e.target.scrollHeight + "px";
+      }}
+      placeholder={placeholder}
+      className={className}
+      style={{ ...style, minHeight: "52px" }}
+    />
   );
 }

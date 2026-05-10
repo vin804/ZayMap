@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { ProtectedRoute } from "@/components/protected-route";
 import { uploadImages } from "@/lib/upload";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Store,
   ArrowLeft,
@@ -16,9 +18,12 @@ import {
   Phone,
   Globe,
   Video,
-  ImagePlus,
-  X,
   Upload,
+  X,
+  Settings,
+  Sparkles,
+  Truck,
+  ImageIcon,
 } from "lucide-react";
 
 interface Category {
@@ -53,9 +58,71 @@ const CATEGORIES = [
   { value: "other", label: "Other", label_mm: "အခြား" },
 ];
 
+const toastVariants = {
+  hidden: { opacity: 0, y: -16, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: "spring" as const, stiffness: 400, damping: 25 },
+  },
+  exit: { opacity: 0, y: -8, scale: 0.96, transition: { duration: 0.2 } },
+} as const;
+
+const fieldVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.05, duration: 0.35, ease: "easeOut" as const },
+  }),
+} as const;
+
+function AutoExpandingTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  style,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className: string;
+  style: React.CSSProperties;
+  rows?: number;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        e.target.style.height = "auto";
+        e.target.style.height = e.target.scrollHeight + "px";
+      }}
+      placeholder={placeholder}
+      rows={rows}
+      className={className}
+      style={{ ...style, minHeight: `${rows * 24 + 24}px` }}
+    />
+  );
+}
+
 export default function ShopSettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [shopId, setShopId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,7 +132,7 @@ export default function ShopSettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
   const [bannerFiles, setBannerFiles] = useState<File[]>([]);
-  
+
   const [formData, setFormData] = useState<ShopFormData>({
     name: "",
     name_mm: "",
@@ -179,7 +246,6 @@ export default function ShopSettingsPage() {
   const removeBanner = (index: number) => {
     setBannerFiles((prev) => prev.filter((_, i) => i !== index));
     setBannerPreviews((prev) => prev.filter((_, i) => i !== index));
-    // Also clear from formData so old URLs don't persist
     setFormData((prev) => ({ ...prev, image_urls: [] }));
   };
 
@@ -197,7 +263,6 @@ export default function ShopSettingsPage() {
     try {
       let updatedFormData = { ...formData };
 
-      // Upload new logo if selected
       if (logoFile) {
         const uploadResult = await uploadImages([logoFile], "shop-logos");
         if (uploadResult.error) throw new Error(uploadResult.error);
@@ -206,13 +271,11 @@ export default function ShopSettingsPage() {
         }
       }
 
-      // Upload new banners if selected (replace old ones)
       if (bannerFiles.length > 0) {
         const uploadResult = await uploadImages(bannerFiles, "shop-banners");
         if (uploadResult.error) throw new Error(uploadResult.error);
-        updatedFormData.image_urls = uploadResult.urls; // Replace, don't append
+        updatedFormData.image_urls = uploadResult.urls;
       } else if (bannerPreviews.length === 0) {
-        // No banners left, clear image_urls
         updatedFormData.image_urls = [];
       }
 
@@ -236,317 +299,528 @@ export default function ShopSettingsPage() {
     }
   };
 
+  const inputBaseClasses =
+    "w-full px-4 py-3 rounded-xl border outline-none transition-all duration-200 focus:ring-2 focus:ring-[#667eea]/30 focus:border-[#667eea]";
+  const inputStyle = {
+    background: "var(--bg-elevated)",
+    borderColor: "var(--border)",
+    color: "var(--fg)",
+  };
+  const labelStyle = { color: "var(--fg)" };
+  const optionalStyle = { color: "var(--fg-muted)" };
+  const helperStyle = { color: "var(--fg-dim)" };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 text-[#667eea] animate-spin mx-auto mb-4" />
-          <p className="text-[var(--text-gray)]">Loading shop...</p>
-        </div>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--background)" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative mx-auto mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center animate-pulse">
+              <Settings className="h-7 w-7 text-white" />
+            </div>
+            <div
+              className="absolute inset-0 rounded-2xl blur-xl opacity-40"
+              style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}
+            />
+          </div>
+          <p className="text-sm font-medium" style={{ color: "var(--fg-muted)" }}>
+            Loading shop settings...
+          </p>
+        </motion.div>
       </div>
     );
   }
 
   if (error && !shopId) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ background: "var(--background)" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md w-full rounded-3xl border p-10"
+          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(239,68,68,0.1)" }}
+          >
             <AlertCircle className="h-8 w-8 text-red-500" />
           </div>
-          <h1 className="text-xl font-bold text-[var(--text-dark)] mb-2">Shop not found</h1>
-          <p className="text-[var(--text-gray)] mb-6">{error}</p>
-          <button
+          <h1 className="text-xl font-bold mb-2" style={{ color: "var(--fg)" }}>
+            Shop not found
+          </h1>
+          <p className="mb-6" style={{ color: "var(--fg-muted)" }}>
+            {error}
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => router.push("/onboarding/shop-registration")}
-            className="px-6 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium"
+            className="px-6 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-medium shadow-lg shadow-purple-500/20"
           >
             Register Shop
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     );
   }
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[var(--background)]">
+      <div className="min-h-screen" style={{ background: "var(--background)" }}>
         {/* Header */}
-        <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => router.push("/shop/dashboard")}
-                  className="p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
-                >
-                  <ArrowLeft className="h-5 w-5 text-[var(--text-gray)]" />
-                </button>
-                <h1 className="text-xl font-semibold text-[var(--text-dark)]">Shop Settings</h1>
+        <header
+          className="sticky top-0 z-30 border-b backdrop-blur-xl"
+          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+        >
+          <div className="max-w-3xl mx-auto px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push("/shop/dashboard")}
+                className="p-2 rounded-xl transition-colors"
+                style={{ color: "var(--fg)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "transparent";
+                }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </motion.button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20">
+                  <Settings className="h-4 w-4 text-white" />
+                </div>
+                <h1 className="text-lg font-bold" style={{ color: "var(--fg)" }}>
+                  Shop Settings
+                </h1>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-6">
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-500">
-              <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-            </div>
-          )}
+        <main className="max-w-3xl mx-auto px-4 py-6">
+          {/* Animated Toasts */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div
+                key="error"
+                variants={toastVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="mb-5 rounded-2xl border p-4 flex items-start gap-3 shadow-lg"
+                style={{
+                  background: "rgba(239,68,68,0.08)",
+                  borderColor: "rgba(239,68,68,0.2)",
+                }}
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-500">{error}</p>
+              </motion.div>
+            )}
 
-          {success && (
-            <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500">
-              <CheckCircle className="h-5 w-5" />
-              <span>Shop updated successfully!</span>
-            </div>
-          )}
+            {success && (
+              <motion.div
+                key="success"
+                variants={toastVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="mb-5 rounded-2xl border p-4 flex items-start gap-3 shadow-lg"
+                style={{
+                  background: "rgba(34,197,94,0.08)",
+                  borderColor: "rgba(34,197,94,0.2)",
+                }}
+              >
+                <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-emerald-500">
+                  Shop updated successfully!
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="bg-[var(--card-bg)] rounded-2xl shadow-sm border border-gray-200/20 p-6">
+          <motion.form
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-3xl border p-6 sm:p-8 space-y-6"
+            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+          >
             {/* Shop Name */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={0}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Shop Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="Enter shop name"
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                className={inputBaseClasses}
+                style={inputStyle}
                 required
               />
-            </div>
+            </motion.div>
 
             {/* Shop Name (Myanmar) */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                Shop Name (Myanmar) <span className="text-[var(--text-gray)]">(Optional)</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={1}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                Shop Name (Myanmar){" "}
+                <span className="font-normal" style={optionalStyle}>
+                  (Optional)
+                </span>
               </label>
               <input
                 type="text"
                 value={formData.name_mm}
-                onChange={(e) => setFormData(prev => ({ ...prev, name_mm: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name_mm: e.target.value }))}
                 placeholder="မြန်မာဘာသာဖြင့် ထည့်ပါ"
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                className={inputBaseClasses}
+                style={inputStyle}
               />
-            </div>
+            </motion.div>
 
             {/* Category */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={2}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Category <span className="text-red-500">*</span>
               </label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
-                required
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label} ({cat.label_mm})
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="relative">
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                  className={`${inputBaseClasses} appearance-none cursor-pointer`}
+                  style={inputStyle}
+                  required
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label} ({cat.label_mm})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg
+                    className="w-4 h-4"
+                    style={{ color: "var(--fg-dim)" }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Logo Upload */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={3}>
+              <label className="block text-sm font-semibold mb-3" style={labelStyle}>
                 Shop Logo
               </label>
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 bg-gray-500/10 rounded-xl flex items-center justify-center overflow-hidden border-2 border-[var(--border-subtle)]">
+                <div
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden border-2"
+                  style={{ background: "var(--bg)", borderColor: "var(--border)" }}
+                >
                   {logoPreview ? (
-                    <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <Store className="h-8 w-8 text-[var(--text-gray)]" />
+                    <Store className="h-8 w-8" style={{ color: "var(--fg-dim)" }} />
                   )}
                 </div>
                 <div>
-                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/10 rounded-lg cursor-pointer hover:bg-gray-500/20 transition-colors">
-                    <Upload className="h-4 w-4 text-[var(--text-gray)]" />
-                    <span className="text-sm font-medium text-[var(--text-dark)]">Upload Logo</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-[#667eea]/10 border"
+                    style={{ background: "var(--bg-hover)", borderColor: "var(--border)" }}>
+                    <Upload className="h-4 w-4" style={{ color: "var(--fg-dim)" }} />
+                    <span className="text-sm font-medium" style={{ color: "var(--fg)" }}>
+                      Upload Logo
+                    </span>
+                    <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
                   </label>
-                  <p className="text-xs text-[var(--text-gray)] mt-1">Max 5MB, JPG or PNG</p>
+                  <p className="text-xs mt-1.5" style={helperStyle}>
+                    Max 5MB, JPG or PNG
+                  </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Banner Upload */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={4}>
+              <label className="block text-sm font-semibold mb-3" style={labelStyle}>
                 Shop Banner
               </label>
               <div className="space-y-3">
-                {/* Banner Preview */}
                 {bannerPreviews.length > 0 && (
-                  <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-[var(--border-subtle)] max-w-md">
-                    <img src={bannerPreviews[0]} alt="Banner" className="w-full h-full object-cover" />
-                    <button
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative aspect-video rounded-2xl overflow-hidden border max-w-md group"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <img
+                      src={bannerPreviews[0]}
+                      alt="Banner"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       type="button"
                       onClick={() => removeBanner(0)}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-white rounded-full hover:bg-red-500 transition-colors"
+                      className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <X className="h-4 w-4" />
-                    </button>
-                  </div>
+                    </motion.button>
+                  </motion.div>
                 )}
-                
-                {/* Upload Button */}
+
                 {bannerPreviews.length < 1 && (
-                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/10 rounded-lg cursor-pointer hover:bg-gray-500/20 transition-colors">
-                    <Upload className="h-4 w-4 text-[var(--text-gray)]" />
-                    <span className="text-sm font-medium text-[var(--text-dark)]">Upload Banner</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBannerChange}
-                      className="hidden"
-                    />
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-[#667eea]/10 border"
+                    style={{ background: "var(--bg-hover)", borderColor: "var(--border)" }}>
+                    <ImageIcon className="h-4 w-4" style={{ color: "var(--fg-dim)" }} />
+                    <span className="text-sm font-medium" style={{ color: "var(--fg)" }}>
+                      Upload Banner
+                    </span>
+                    <input type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
                   </label>
                 )}
-                <p className="text-xs text-[var(--text-gray)]">Max 5MB, one banner image (optional)</p>
+                <p className="text-xs" style={helperStyle}>
+                  Max 5MB, one banner image (optional)
+                </p>
               </div>
-            </div>
+            </motion.div>
 
             {/* Description (English) */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                Shop Description <span className="text-[var(--text-gray)]">(Optional)</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={5}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                Shop Description{" "}
+                <span className="font-normal" style={optionalStyle}>
+                  (Optional)
+                </span>
               </label>
-              <textarea
+              <AutoExpandingTextarea
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
                 placeholder="Tell customers about your shop, products, and services..."
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)] resize-none"
+                className={`${inputBaseClasses} resize-none overflow-hidden`}
+                style={inputStyle}
+                rows={3}
               />
-            </div>
+            </motion.div>
 
             {/* Description (Myanmar) */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                Shop Description (Myanmar) <span className="text-[var(--text-gray)]">(Optional)</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={6}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                Shop Description (Myanmar){" "}
+                <span className="font-normal" style={optionalStyle}>
+                  (Optional)
+                </span>
               </label>
-              <textarea
+              <AutoExpandingTextarea
                 value={formData.description_mm}
-                onChange={(e) => setFormData(prev => ({ ...prev, description_mm: e.target.value }))}
+                onChange={(value) => setFormData((prev) => ({ ...prev, description_mm: value }))}
                 placeholder="ဆိုင်အကြောင်း၊ ပစ္စည်းများနှင့် ဝန်ဆောင်မှုများကို ဖော်ပြပါ..."
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)] resize-none"
+                className={`${inputBaseClasses} resize-none overflow-hidden`}
+                style={inputStyle}
+                rows={3}
               />
-            </div>
+            </motion.div>
 
             {/* Phone */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={7}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Phone Number <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
+                <Phone
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+                  style={{ color: "var(--fg-dim)" }}
+                />
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
                   placeholder="09..."
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                  className={`${inputBaseClasses} pl-12`}
+                  style={inputStyle}
                   required
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* Address */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={8}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
                 Address <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-3 h-5 w-5 text-[var(--text-gray)]" />
-                <textarea
+                <MapPin
+                  className="absolute left-4 top-3.5 h-5 w-5"
+                  style={{ color: "var(--fg-dim)" }}
+                />
+                <AutoExpandingTextarea
                   value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, address: value }))}
                   placeholder="Enter your shop address"
-                  rows={3}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)] resize-none"
-                  required
+                  className={`${inputBaseClasses} resize-none overflow-hidden pl-12`}
+                  style={inputStyle}
+                  rows={2}
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* Facebook */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                Facebook Page <span className="text-[var(--text-gray)]">(Optional)</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={9}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                Facebook Page{" "}
+                <span className="font-normal" style={optionalStyle}>
+                  (Optional)
+                </span>
               </label>
               <div className="relative">
-                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
+                <Globe
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+                  style={{ color: "var(--fg-dim)" }}
+                />
                 <input
                   type="text"
                   value={formData.facebook}
-                  onChange={(e) => setFormData(prev => ({ ...prev, facebook: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, facebook: e.target.value }))}
                   placeholder="facebook.com/yourpage"
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                  className={`${inputBaseClasses} pl-12`}
+                  style={inputStyle}
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* TikTok */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                TikTok <span className="text-[var(--text-gray)]">(Optional)</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={10}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                TikTok{" "}
+                <span className="font-normal" style={optionalStyle}>
+                  (Optional)
+                </span>
               </label>
               <div className="relative">
-                <Video className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
+                <Video
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5"
+                  style={{ color: "var(--fg-dim)" }}
+                />
                 <input
                   type="text"
                   value={formData.tiktok}
-                  onChange={(e) => setFormData(prev => ({ ...prev, tiktok: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, tiktok: e.target.value }))}
                   placeholder="@username"
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                  className={`${inputBaseClasses} pl-12`}
+                  style={inputStyle}
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* Delivery Available */}
-            <div className="mb-8">
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={formData.delivery_available}
-                  onChange={(e) => setFormData(prev => ({ ...prev, delivery_available: e.target.checked }))}
-                  className="w-5 h-5 rounded border-gray-300 text-[#667eea] focus:ring-[#667eea]"
-                />
-                <span className="text-[var(--text-dark)]">Delivery Available</span>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={11}>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={formData.delivery_available}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, delivery_available: e.target.checked }))
+                    }
+                    className="peer sr-only"
+                  />
+                  <div
+                    className="w-11 h-6 rounded-full transition-all duration-300"
+                    style={{
+                      background: formData.delivery_available
+                        ? "linear-gradient(135deg, #667eea, #764ba2)"
+                        : "var(--bg-hover)",
+                    }}
+                  >
+                    <div
+                      className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform duration-300 shadow-sm"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        transform: formData.delivery_available
+                          ? "translateX(20px)"
+                          : "translateX(0)",
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Truck
+                    className="h-4 w-4"
+                    style={{
+                      color: formData.delivery_available ? "#667eea" : "var(--fg-dim)",
+                    }}
+                  />
+                  <span className="text-sm font-medium" style={{ color: "var(--fg)" }}>
+                    Delivery Available
+                  </span>
+                </div>
               </label>
-            </div>
+            </motion.div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={saving || !shopId}
-              className="w-full py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            <motion.div
+              variants={fieldVariants}
+              initial="hidden"
+              animate="visible"
+              custom={12}
+              className="pt-2"
             >
-              {saving ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-5 w-5" />
-                  <span>Save Changes</span>
-                </>
-              )}
-            </button>
-          </form>
+              <motion.button
+                whileHover={!saving ? { scale: 1.01 } : {}}
+                whileTap={!saving ? { scale: 0.99 } : {}}
+                type="submit"
+                disabled={saving || !shopId}
+                className="w-full py-3.5 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
+                style={{
+                  background: "linear-gradient(135deg, #667eea, #764ba2)",
+                }}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5" />
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </motion.button>
+            </motion.div>
+          </motion.form>
         </main>
       </div>
     </ProtectedRoute>

@@ -25,11 +25,14 @@ import { auth, db, googleProvider } from "./firebase";
 
 export interface User {
   uid: string;
-  email: string;
-  displayName: string;
+  email: string | null;
+  displayName: string | null;
   photoUrl?: string;
   createdAt: Date | null;
   lastLoginAt: Date | null;
+  emailVerified?: boolean;
+  provider?: string;
+  providerUid?: string;
 }
 
 interface UserProfileData {
@@ -44,6 +47,7 @@ interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  initializing: boolean;
   error: string | null;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
@@ -58,9 +62,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function mapFirebaseUserToUser(firebaseUser: FirebaseUser, provider?: string): User {
-  // Create provider-specific UID to separate Facebook/Google accounts
-  const providerId = provider || firebaseUser.providerData[0]?.providerId || "unknown";
+function mapFirebaseUserToUser(firebaseUser: FirebaseUser, overrides?: Partial<User>): User {
+  const providerId = firebaseUser.providerData[0]?.providerId || "unknown";
   const providerPrefix = providerId.toString().includes("facebook") ? "fb" : 
                         providerId.toString().includes("google") ? "gg" : "em";
   
@@ -68,16 +71,18 @@ function mapFirebaseUserToUser(firebaseUser: FirebaseUser, provider?: string): U
     uid: firebaseUser.uid,
     email: firebaseUser.email,
     displayName: firebaseUser.displayName,
-    photoUrl: firebaseUser.photoURL,
+    photoUrl: firebaseUser.photoURL || undefined,
     emailVerified: firebaseUser.emailVerified,
-    provider: providerId, // Store which provider was used
-    providerUid: `${providerPrefix}_${firebaseUser.uid}`, // Unique per provider
+    provider: providerId,
+    providerUid: `${providerPrefix}_${firebaseUser.uid}`,
+    createdAt: null,
+    lastLoginAt: new Date(),
+    ...overrides,
   };
 }
 
 async function createUserProfile(firebaseUser: FirebaseUser, displayName?: string): Promise<User> {
   if (!db) {
-    // Firestore not initialized - return basic user without profile
     return mapFirebaseUserToUser(firebaseUser, {
       displayName: displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
     });
@@ -115,7 +120,6 @@ async function createUserProfile(firebaseUser: FirebaseUser, displayName?: strin
       });
     }
   } catch (err) {
-    // Firestore failed but auth succeeded - return basic user
     console.warn("Failed to create Firestore profile:", err);
     return mapFirebaseUserToUser(firebaseUser, {
       displayName: displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
@@ -155,38 +159,32 @@ function convertTimestampToDate(timestamp: unknown): Date | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!auth) {
-      setLoading(false);
+      setInitializing(false);
       return;
     }
 
-    // Handle redirect result (for signInWithRedirect)
     getRedirectResult(auth).then(async (result) => {
-      console.log("[Auth] getRedirectResult:", result);
       if (result?.user) {
-        console.log("[Auth] Redirect login successful, user:", result.user.uid);
         setFirebaseUser(result.user);
         try {
           const userProfile = await createUserProfile(result.user);
-          console.log("[Auth] User profile created:", userProfile);
           setUser(userProfile);
         } catch (err) {
           console.error("[Auth] Error loading user profile from redirect:", err);
           setUser(mapFirebaseUserToUser(result.user));
         }
-      } else {
-        console.log("[Auth] No redirect result user");
       }
     }).catch((error) => {
       console.error("[Auth] Redirect result error:", error);
     });
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
         try {
@@ -200,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setFirebaseUser(null);
       }
-      setLoading(false);
+      setInitializing(false);
     });
 
     return () => unsubscribe();
@@ -251,8 +249,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) throw new Error("Auth not initialized");
     try {
       setError(null);
-      // Create fresh provider instance with only public_profile scope
-      // This ensures email is NOT requested (requires extra FB permissions)
       const fbProvider = new FacebookAuthProvider();
       fbProvider.setCustomParameters({
         scope: "public_profile"
@@ -293,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     firebaseUser,
     loading,
+    initializing,
     error,
     signInWithEmail,
     signUpWithEmail,
