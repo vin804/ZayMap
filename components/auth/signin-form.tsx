@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Lock } from "lucide-react";
 import Link from "next/link";
 
 export function SignInForm() {
@@ -12,118 +12,91 @@ export function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Redirect when user is authenticated
   useEffect(() => {
     if (user) {
-      console.log("User detected, redirecting to /map");
       window.location.href = "/map";
     }
   }, [user]);
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-
-    if (!validateEmail(email)) {
-      return;
-    }
-
-    if (password.length < 1) {
-      return;
-    }
-
+    if (!email || !password) return;
     setLoading(true);
-    console.log("Attempting sign in...");
     try {
       await signInWithEmail(email, password);
-      console.log("Sign in successful, waiting for auth state...");
-      // Redirect is handled by useEffect when user state updates
-    } catch (err) {
-      console.error("Sign in error in component:", err);
+    } catch {
       setLoading(false);
-      // Error is handled by auth context and displayed below
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-500">
-          {error}
+        <div className="alert alert-error text-sm">
+          <span>{error}</span>
         </div>
       )}
 
       <div>
-        <label
-          htmlFor="email"
-          className="mb-1 block text-sm font-medium text-[var(--text-dark)]"
-        >
+        <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
           Email Address
         </label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-gray-200/20 bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:border-[var(--gradient-primary-from)] focus:outline-none focus:ring-1 focus:ring-[var(--gradient-primary-from)]"
-          placeholder="Enter your email"
-          required
-        />
+        <div className="relative">
+          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-dim)]" />
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input-field !pl-10"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
       </div>
 
       <div>
-        <label
-          htmlFor="password"
-          className="mb-1 block text-sm font-medium text-[var(--text-dark)]"
-        >
+        <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
           Password
         </label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-gray-200/20 bg-[var(--card-bg)] px-4 py-3 text-sm text-[var(--text-dark)] placeholder:text-[var(--text-gray)] focus:border-[var(--gradient-primary-from)] focus:outline-none focus:ring-1 focus:ring-[var(--gradient-primary-from)]"
-          placeholder="Enter your password"
-          required
-        />
+        <div className="relative">
+          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-dim)]" />
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input-field !pl-10"
+            placeholder="••••••••"
+            required
+          />
+        </div>
       </div>
 
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-500/30 bg-[var(--card-bg)] text-[var(--gradient-primary-from)] focus:ring-[var(--gradient-primary-from)]"
+            className="h-4 w-4 rounded border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--accent)] focus:ring-[var(--accent)]/20"
           />
-          <span className="text-sm text-[var(--text-gray)]">Remember me</span>
+          <span className="text-sm text-[var(--fg-muted)]">Remember me</span>
         </label>
-        <Link
-          href="/auth/forgot-password"
-          className="text-sm font-medium text-[var(--gradient-primary-from)] hover:underline"
-        >
+        <Link href="/auth/forgot-password" className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-dark)] transition-colors">
           Forgot password?
         </Link>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#667eea] to-[#764ba2] px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
+      <button type="submit" disabled={loading} className="btn-gradient w-full mt-2">
         {loading ? (
-          <>
+          <span className="flex items-center justify-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Signing in...</span>
-          </>
+            Signing in...
+          </span>
         ) : (
-          <span>Sign In</span>
+          "Sign In"
         )}
       </button>
     </form>
