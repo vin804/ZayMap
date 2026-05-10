@@ -28,7 +28,7 @@ const KEYFRAMES = `
 
 function SkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-xl border-2 border-[var(--border-subtle)] bg-[var(--card-bg)]">
+    <div className="overflow-hidden rounded-xl bg-[var(--bg-elevated)] shadow-[0_8px_24px_rgba(15,17,26,0.04)]">
       <div className="h-24 animate-pulse bg-gray-300/15" />
       <div className="relative px-3 pb-3">
         <div className="relative -mt-5 mb-2 flex items-end gap-3">
@@ -71,7 +71,7 @@ export function ShopSidebar({
   if (loading) {
     return (
       <div className="flex h-full flex-col" style={{ animation: "sbFadeIn 0.3s ease-out" }}>
-        <div className="border-b-2 border-[var(--border-subtle)] bg-[var(--card-bg)] px-4 py-3">
+        <div className="border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
           <div className="mb-1.5 flex items-center gap-2">
             <div className="h-4 w-4 animate-pulse rounded bg-gray-300/15" />
             <div className="h-4 w-28 animate-pulse rounded bg-gray-300/15" />
@@ -144,7 +144,7 @@ export function ShopSidebar({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b-2 border-[var(--border-subtle)] bg-[var(--card-bg)] px-4 py-3">
+      <div className="border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2]">
             <Store className="h-3.5 w-3.5 text-white" />
@@ -164,7 +164,7 @@ export function ShopSidebar({
             <Link
               key={shop.shopId}
               href={`/shop/${shop.shopId}`}
-              className="group block overflow-hidden rounded-xl border-2 border-[var(--border-subtle)] bg-[var(--card-bg)] shadow-sm transition-all duration-300 hover:border-[#667eea] hover:shadow-lg hover:shadow-purple-500/10"
+              className="group block overflow-hidden rounded-xl bg-[var(--bg-elevated)] shadow-[0_8px_24px_rgba(15,17,26,0.04)] transition-all duration-300 hover:shadow-[0_12px_32px_rgba(15,17,26,0.06)]"
               style={{
                 opacity: animReady ? undefined : 0,
                 animation: animReady

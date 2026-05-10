@@ -361,7 +361,7 @@ function MapPageContent() {
   return (
     <div className="flex h-screen flex-col bg-[var(--background)]">
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-[var(--card-bg)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)] px-4 py-2.5 shadow-sm">
+        <header className="sticky top-0 z-50 bg-[var(--card-bg)]/80 backdrop-blur-xl border-b border-[var(--border)] px-4 py-2.5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             {/* Left: Logo */}
             <div className="flex items-center gap-3">
