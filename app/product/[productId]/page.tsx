@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useAnimation } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthGuard } from "@/components/auth-guard";
 import Link from "next/link";
@@ -19,6 +19,8 @@ interface Product {
   id: string; product_id?: string; name: string; name_mm?: string;
   description?: string; image_urls: string[]; price: number; currency: string;
   delivery_available: boolean; created_at: string;
+  upload_timestamp?: string;
+  freshness_badge?: "green" | "orange" | "red";
   shop: { id: string; name: string; name_mm?: string; rating: number; phone?: string; address?: string; delivery_available: boolean; logo_url?: string; latitude?: number; longitude?: number; };
   reviews: Review[]; reviews_count: number; average_rating: number;
 }
@@ -28,14 +30,38 @@ interface Review {
 }
 type Language = "en" | "my";
 
+// Freshness constants
+const freshnessLabels = {
+  en: { green: "New", orange: "Recent", red: "Old" },
+  my: { green: "အသစ်", orange: "မကြာသေးခင်", red: "အဟောင်း" },
+};
+
+const FRESHNESS_STYLES = {
+  green: { label: "New", bg: "rgba(34,197,94,0.12)", text: "#22c55e", border: "rgba(34,197,94,0.2)" },
+  orange: { label: "Recent", bg: "rgba(245,158,11,0.12)", text: "#f59e0b", border: "rgba(245,158,11,0.2)" },
+  red: { label: "Old", bg: "rgba(239,68,68,0.12)", text: "#ef4444", border: "rgba(239,68,68,0.2)" },
+};
+
+function getFreshnessBadge(createdAt?: string, uploadTimestamp?: string, freshnessBadge?: "green" | "orange" | "red"): "green" | "orange" | "red" {
+  if (freshnessBadge && FRESHNESS_STYLES[freshnessBadge]) return freshnessBadge;
+  const dateStr = uploadTimestamp || createdAt;
+  if (!dateStr) return "red";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "red";
+  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (days <= 1) return "green";
+  if (days <= 7) return "orange";
+  return "red";
+}
+
 const TRANSLATIONS = {
   en: { back: "Back", productNotFound: "Product not found", loading: "Loading product details...", tryAgain: "Try Again", reviews: "Reviews", noReviews: "No reviews yet. Be the first to review!", writeReview: "Write a Review", viewShop: "View Shop", rating: "Rating", writeAReview: "Write a Review", yourName: "Your name", ratingLabel: "Rating", reviewOptional: "Review (optional)", submitReview: "Submit Review", submitting: "Submitting...", enterName: "Please enter your name", selectRating: "Please select a rating", reviewError: "Failed to submit review. Please try again.", },
   my: { back: "နောက်သို့", productNotFound: "ပစ္စည်းမတွေ့ပါ", loading: "ပစ္စည်းအချက်အလက်များ ရယူနေသည်...", tryAgain: "ထပ်စမ်းကြည့်မယ်", reviews: "သုံးသပ်ချက်များ", noReviews: "သုံးသပ်ချက်များ မရှိသေးပါ။ ပထမဆုံးသုံးသပ်ရေးသားပါ!", writeReview: "သုံးသပ်ရေးသားမယ်", viewShop: "ဆိုင်ကြည့်မယ်", rating: "အဆင့်", writeAReview: "သုံးသပ်ရေးသားမယ်", yourName: "သင့်နာမည်", ratingLabel: "အဆင့်", reviewOptional: "သုံးသပ်ချက် (ချန်လှပ်နိုင်)", submitReview: "သုံးသပ်ချက်တင်မယ်", submitting: "တင်နေသည်...", enterName: "သင့်နာမည်ထည့်ပါ", selectRating: "အဆင့်ရွေးပါ", reviewError: "သုံးသပ်ချက်မတင်နိုင်ပါ။ ထပ်စမ်းကြည့်ပါ။", },
 };
 
-const fadeInUp = { initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } };
-const staggerContainer = { animate: { transition: { staggerChildren: 0.06 } } };
-const staggerItem = { initial: { opacity: 0, y: 20, scale: 0.97 }, animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } } };
+const fadeInUp = { initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } } } as const;
+const staggerContainer = { animate: { transition: { staggerChildren: 0.06 } } } as const;
+const staggerItem = { initial: { opacity: 0, y: 20, scale: 0.97 }, animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" as const } } } as const;
 
 // ============================================================
 // MAIN PAGE
@@ -53,7 +79,6 @@ export default function ProductDetailPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState(0);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [userVotes, setUserVotes] = useState<Record<string, "helpful" | "unhelpful">>({});
@@ -185,7 +210,6 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen" style={{ background: "var(--bg)" }}>
-        {/* Header skeleton */}
         <div className="sticky top-0 z-40" style={{ backdropFilter: "blur(20px)", background: "color-mix(in srgb, var(--bg-elevated) 80%, transparent)", borderBottom: "1px solid var(--border)" }}>
           <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl shimmer" />
@@ -195,7 +219,6 @@ export default function ProductDetailPage() {
         </div>
         <main className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Image skeleton */}
             <div className="flex gap-4">
               <div className="flex flex-col gap-2">
                 <div className="w-16 h-16 rounded-lg shimmer" />
@@ -204,7 +227,6 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex-1 aspect-square rounded-2xl shimmer" />
             </div>
-            {/* Info skeleton */}
             <div className="space-y-4">
               <div className="h-8 rounded-lg shimmer" style={{ width: "80%" }} />
               <div className="h-5 rounded-lg shimmer" style={{ width: 120 }} />
@@ -258,7 +280,6 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Left - Images */}
           <motion.div {...fadeInUp} className="flex gap-4">
-            {/* Thumbnails */}
             {product.image_urls.length > 0 && (
               <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto scrollbar-hide">
                 {product.image_urls.map((url, idx) => (
@@ -270,7 +291,6 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             )}
-            {/* Main Image - Swipeable */}
             <SwipeableImage
               images={product.image_urls}
               currentIndex={currentImageIndex}
@@ -284,7 +304,6 @@ export default function ProductDetailPage() {
 
           {/* Right - Info */}
           <motion.div {...fadeInUp} transition={{ delay: 0.1 }} className="space-y-5">
-            {/* Title + Share */}
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-2xl font-bold" style={{ color: "var(--fg)" }}>{displayName}</h1>
               <button onClick={() => { navigator.clipboard.writeText(window.location.href); }} className="btn-ghost w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0">
@@ -292,14 +311,12 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            {/* Rating */}
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               <span className="font-semibold" style={{ color: "var(--fg)" }}>{product.average_rating.toFixed(1)}</span>
               <span style={{ color: "var(--fg-muted)" }}>({product.reviews_count} {t.rating})</span>
             </div>
 
-            {/* Price Card */}
             <div className="rounded-2xl p-5 space-y-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
               <div className="flex items-baseline gap-1">
                 <span className="text-sm" style={{ color: "var(--fg-muted)" }}>{product.currency}</span>
@@ -313,7 +330,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="space-y-3">
               <Link href={`/map?shop=${product.shop.id}`} className="btn-gradient w-full flex items-center justify-center gap-2 py-3.5">
                 <MapPin className="h-5 w-5" /> Get Directions
@@ -330,7 +346,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Shop Card */}
             <div className="rounded-2xl p-4" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
               <div className="flex items-start gap-3">
                 {product.shop.logo_url ? (
@@ -409,7 +424,7 @@ export default function ProductDetailPage() {
           )}
         </motion.div>
 
-        {/* Related Products */}
+        {/* Related Products - WITH FRESHNESS BADGES */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold" style={{ color: "var(--fg)" }}>More from this shop</h3>
@@ -419,19 +434,35 @@ export default function ProductDetailPage() {
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--accent)" }} /></div>
           ) : relatedProducts.length > 0 ? (
             <motion.div variants={staggerContainer} initial="initial" animate="animate" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {relatedProducts.map((rp, i) => (
-                <motion.div key={`${rp.id || rp.product_id}-${i}`} variants={staggerItem}>
-                  <Link href={`/product/${rp.id || rp.product_id}`} className="group block rounded-xl overflow-hidden" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                    <div className="aspect-square" style={{ background: "var(--bg)" }}>
-                      {rp.image_urls?.[0] ? <img src={rp.image_urls[0]} alt={language === "en" ? rp.name : (rp.name_mm || rp.name)} className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
-                    </div>
-                    <div className="p-3">
-                      <p className="font-medium text-sm line-clamp-1" style={{ color: "var(--fg)" }}>{language === "en" ? rp.name : (rp.name_mm || rp.name)}</p>
-                      <p className="text-sm font-semibold mt-1" style={{ color: "var(--accent)" }}>{rp.price.toLocaleString()} {rp.currency}</p>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+              {relatedProducts.map((rp, i) => {
+                const freshnessKey = getFreshnessBadge(rp.created_at, rp.upload_timestamp, rp.freshness_badge);
+                const freshness = FRESHNESS_STYLES[freshnessKey];
+                const rpName = language === "en" ? rp.name : (rp.name_mm || rp.name);
+                return (
+                  <motion.div key={`${rp.id || rp.product_id}-${i}`} variants={staggerItem}>
+                    <Link href={`/product/${rp.id || rp.product_id}`} className="group block rounded-xl overflow-hidden" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                      <div className="aspect-square relative" style={{ background: "var(--bg)" }}>
+                        {rp.image_urls?.[0] ? (
+                          <img src={rp.image_urls[0]} alt={rpName} className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>
+                        )}
+                        {/* Freshness Badge */}
+                        <span
+                          className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                          style={{ background: freshness.bg, color: freshness.text, border: `1px solid ${freshness.border}` }}
+                        >
+                          {freshnessLabels[language][freshnessKey]}
+                        </span>
+                      </div>
+                      <div className="p-3">
+                        <p className="font-medium text-sm line-clamp-1" style={{ color: "var(--fg)" }}>{rpName}</p>
+                        <p className="text-sm font-semibold mt-1" style={{ color: "var(--accent)" }}>{rp.price.toLocaleString()} {rp.currency}</p>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
             </motion.div>
           ) : (
             <div className="text-center py-8 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
@@ -520,27 +551,22 @@ function SwipeableImage({ images, currentIndex, onIndexChange, alt, onClick, tim
 
     if (images.length <= 1) return;
 
-    // Swipe left (next image)
     if (offset < -SWIPE_THRESHOLD || velocity < -500) {
       if (currentIndex < images.length - 1) {
         controls.start({ x: 0, transition: { duration: 0.2 } });
         onIndexChange(currentIndex + 1);
       } else {
-        // Bounce back at end
         controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } });
       }
     }
-    // Swipe right (prev image)
     else if (offset > SWIPE_THRESHOLD || velocity > 500) {
       if (currentIndex > 0) {
         controls.start({ x: 0, transition: { duration: 0.2 } });
         onIndexChange(currentIndex - 1);
       } else {
-        // Bounce back at start
         controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } });
       }
     } else {
-      // Snap back if not enough swipe
       controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } });
     }
   };
@@ -555,7 +581,6 @@ function SwipeableImage({ images, currentIndex, onIndexChange, alt, onClick, tim
 
   return (
     <div className="flex-1 relative aspect-square rounded-2xl overflow-hidden" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", touchAction: "pan-y" }}>
-      {/* Images stack */}
       <div className="relative w-full h-full">
         {images.map((url, idx) => {
           const isActive = idx === currentIndex;
@@ -593,19 +618,16 @@ function SwipeableImage({ images, currentIndex, onIndexChange, alt, onClick, tim
         })}
       </div>
 
-      {/* Time badge */}
       <div className="absolute top-3 left-3 z-10">
         <span className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--fg-muted)" }}>
           <Clock className="h-3 w-3" /> {timeAgo}
         </span>
       </div>
 
-      {/* Fullscreen */}
       <button onClick={onLightbox} className="absolute top-3 right-3 p-2 rounded-xl transition-all z-10" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
         <Maximize2 className="h-4 w-4" style={{ color: "var(--fg-muted)" }} />
       </button>
 
-      {/* Dots */}
       {images.length > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
           {images.map((_, idx) => (
@@ -614,7 +636,6 @@ function SwipeableImage({ images, currentIndex, onIndexChange, alt, onClick, tim
         </div>
       )}
 
-      {/* Swipe hint on mobile */}
       {images.length > 1 && (
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 sm:hidden">
           <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(0,0,0,0.4)", color: "white" }}>Swipe to browse</span>

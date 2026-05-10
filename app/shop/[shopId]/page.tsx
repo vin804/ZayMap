@@ -17,8 +17,8 @@ import {
 // TYPES & CONSTANTS (unchanged)
 // ============================================================
 const freshnessLabels = {
-  en: { green: "New", orange: "Recent", red: "" },
-  my: { green: "အသစ်", orange: "မကြာသေးခင်", red: "" },
+  en: { green: "New", orange: "Recent", red: "Old" },
+  my: { green: "အသစ်", orange: "မကြာသေးခင်", red: "အဟောင်း" },
 };
 
 interface Category { id: string; name?: string; name_mm?: string; icon?: string; order_index: number; }
@@ -102,7 +102,7 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
 const FRESHNESS_STYLES = {
   green: { label: "New", bg: "rgba(34,197,94,0.12)", text: "#22c55e", border: "rgba(34,197,94,0.2)" },
   orange: { label: "Recent", bg: "rgba(245,158,11,0.12)", text: "#f59e0b", border: "rgba(245,158,11,0.2)" },
-  red: { label: "", bg: "", text: "", border: "" },
+  red: { label: "Old", bg: "rgba(239,68,68,0.12)", text: "#ef4444", border: "rgba(239,68,68,0.2)" },
 };
 
 function calculateRatingDistribution(reviews: Review[]) {
@@ -129,15 +129,18 @@ function calculateRatingDistribution(reviews: Review[]) {
 // ============================================================
 const fadeInUp = {
   initial: { opacity: 0, y: 24 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+} as const;
+
 const staggerContainer = {
   animate: { transition: { staggerChildren: 0.06 } },
-};
+} as const;
+
 const staggerItem = {
   initial: { opacity: 0, y: 20, scale: 0.97 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
-};
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" as const } },
+} as const;
+
 const cardHover = {
   y: -6,
   boxShadow: "0 20px 40px -12px rgba(102,126,234,0.12), 0 8px 16px -6px rgba(0,0,0,0.06)",
@@ -751,9 +754,21 @@ export default function ShopDetailPage() {
 // SUB-COMPONENTS (same logic, redesigned UI)
 // ============================================================
 
+// Helper to compute freshness from timestamp
+function getFreshnessBadge(product: Product): "green" | "orange" | "red" {
+  if (product.freshness_badge) return product.freshness_badge;
+  const days = Math.floor(
+    (Date.now() - new Date(product.upload_timestamp).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (days <= 1) return "green";
+  if (days <= 7) return "orange";
+  return "red";
+}
+
 const FeaturedProductCard = React.memo(function FeaturedProductCard({ product, shop, language, t, onClick }: { product: Product; shop: Shop; language: Language; t: typeof TRANSLATIONS["en"]; onClick: () => void; }) {
   const displayName = language === "my" && product.product_name_mm ? product.product_name_mm : product.product_name;
-  const freshness = FRESHNESS_STYLES[product.freshness_badge] || FRESHNESS_STYLES.red;
+  const freshnessKey = getFreshnessBadge(product);
+  const freshness = FRESHNESS_STYLES[freshnessKey];
   return (
     <motion.button whileHover={cardHover} onClick={onClick} className="group text-left w-full rounded-2xl overflow-hidden"
       style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
@@ -766,11 +781,9 @@ const FeaturedProductCard = React.memo(function FeaturedProductCard({ product, s
             <span className="text-5xl">📦</span>
           </div>
         )}
-        {product.freshness_badge !== "red" && (
-          <span className="absolute top-3 left-3 badge" style={{ background: freshness.bg, color: freshness.text, border: `1px solid ${freshness.border}` }}>
-            {freshnessLabels[language][product.freshness_badge]}
-          </span>
-        )}
+        <span className="absolute top-3 left-3 badge" style={{ background: freshness.bg, color: freshness.text, border: `1px solid ${freshness.border}` }}>
+          {freshnessLabels[language][freshnessKey]}
+        </span>
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
           <span className="px-4 py-2 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0"
             style={{ background: "rgba(255,255,255,0.9)", color: "#1f2937" }}>{t.view}</span>
@@ -792,7 +805,8 @@ const FeaturedProductCard = React.memo(function FeaturedProductCard({ product, s
 });
 
 const AmazonProductCard = React.memo(function AmazonProductCard({ product, shop, language, t, onClick }: { product: Product; shop: Shop; language: Language; t: typeof TRANSLATIONS["en"]; onClick: () => void; }) {
-  const freshness = FRESHNESS_STYLES[product.freshness_badge] || FRESHNESS_STYLES.red;
+  const freshnessKey = getFreshnessBadge(product);
+  const freshness = FRESHNESS_STYLES[freshnessKey];
   const displayName = language === "my" && product.product_name_mm ? product.product_name_mm : product.product_name;
   return (
     <motion.button whileHover={cardHover} onClick={onClick} className="group text-left w-full rounded-xl overflow-hidden"
@@ -805,13 +819,11 @@ const AmazonProductCard = React.memo(function AmazonProductCard({ product, shop,
             <Package className="h-12 w-12" style={{ color: "var(--fg-dim)" }} />
           </div>
         )}
-        {product.freshness_badge !== "red" && freshness && (
-          <div className="absolute top-2 left-2">
-            <span className="badge" style={{ background: freshness?.bg, color: freshness?.text, border: `1px solid ${freshness?.border}` }}>
-              {freshnessLabels[language][product.freshness_badge]}
-            </span>
-          </div>
-        )}
+        <div className="absolute top-2 left-2">
+          <span className="badge" style={{ background: freshness.bg, color: freshness.text, border: `1px solid ${freshness.border}` }}>
+            {freshnessLabels[language][freshnessKey]}
+          </span>
+        </div>
       </div>
       <div className="p-3">
         <h3 className="text-sm font-medium line-clamp-2 mb-1 min-h-[2.5rem] group-hover:text-[var(--accent)] transition-colors" style={{ color: "var(--fg)" }}>{displayName}</h3>
