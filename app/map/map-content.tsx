@@ -48,17 +48,22 @@ function MobileBottomSheet({
   const startTranslate = useRef(0);
   const isDragging = useRef(false);
   const didMove = useRef(false);
+  const [mounted, setMounted] = useState(false);
 
-  const OPEN_H = typeof window !== "undefined" ? window.innerHeight * 0.6 : 400;
+  // SSR-safe: only calculate heights after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const OPEN_H = mounted && typeof window !== "undefined" ? Math.round(window.innerHeight * 0.6) : 400;
   const PEEK_H = 56;
   const MAX_T = OPEN_H - PEEK_H;
 
   useEffect(() => {
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
-      sheetRef.current.style.transform = `translateY(${open ? 0 : MAX_T}px)`;
-    }
-  }, [open, MAX_T]);
+    if (!mounted || !sheetRef.current) return;
+    sheetRef.current.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+    sheetRef.current.style.transform = `translateY(${open ? 0 : MAX_T}px)`;
+  }, [open, mounted, MAX_T]);
 
   const beginDrag = (y: number) => {
     startY.current = y;
@@ -106,11 +111,27 @@ function MobileBottomSheet({
     return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
   });
 
+  // SSR-safe initial styles (must match between server and client)
+  const initialStyle: React.CSSProperties = {
+    transform: `translateY(${400 - 56}px)`,
+    transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+    height: 456,
+    marginTop: -56,
+  };
+
+  // After mount, use real values
+  const activeStyle: React.CSSProperties = mounted ? {
+    transform: `translateY(${open ? 0 : MAX_T}px)`,
+    transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+    height: OPEN_H + PEEK_H,
+    marginTop: -PEEK_H,
+  } : initialStyle;
+
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[9997] pointer-events-none">
       <div ref={sheetRef}
-        className="pointer-events-auto bg-[var(--card-bg)] rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.3)] border-t border-[var(--border-subtle)]"
-        style={{ transform: `translateY(${MAX_T}px)`, transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)", height: OPEN_H + PEEK_H, marginTop: -PEEK_H }}>
+        className="pointer-events-auto bg-[var(--bg-elevated)] rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.3)] border-t border-[var(--border)]"
+        style={activeStyle}>
         <div onTouchStart={(e) => beginDrag(e.touches[0].clientY)}
              onTouchMove={(e) => moveDrag(e.touches[0].clientY)}
              onTouchEnd={(e) => endDrag(e.changedTouches[0].clientY)}
@@ -118,7 +139,7 @@ function MobileBottomSheet({
              onClick={onTap}
              className="flex flex-col items-center cursor-grab active:cursor-grabbing select-none py-3 px-4">
           <div className="w-10 h-1 bg-gray-400/50 rounded-full mb-2" />
-            <div className="flex items-center gap-1 text-xs text-[var(--text-gray)]">
+          <div className="flex items-center gap-1 text-xs text-[var(--fg-muted)]">
             <ChevronUp className={`h-4 w-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
             <span>{open ? 'Tap to close' : 'Nearby Shops'}</span>
           </div>
@@ -130,7 +151,6 @@ function MobileBottomSheet({
     </div>
   );
 }
-
 function MapPageContent() {
   const { user, logout } = useAuth();
   const { checkAuth, AuthGuardModal } = useAuthGuard();
@@ -519,61 +539,61 @@ function MapPageContent() {
             />
           </aside>
 
-                    {/* Mobile Nav Drawer */}
+                 {/* Mobile Nav Drawer */}
           <aside
-            className={`lg:hidden fixed inset-y-0 left-0 z-[10000] w-[280px] bg-[var(--card-bg)] shadow-2xl transition-transform duration-300 ${
+            className={`lg:hidden fixed inset-y-0 left-0 z-[10000] w-[280px] bg-[var(--bg-elevated)] shadow-2xl transition-transform duration-300 ${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
             <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
                 <Link href="/map" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
                   <div className="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-[#667eea] to-[#764ba2]">
                     <MapPin className="h-3.5 w-3.5 text-white" />
                   </div>
                   <span className="font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">ZayMap</span>
                 </Link>
-                <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-[var(--border-subtle)] rounded-full transition-colors">
-                  <X className="h-5 w-5 text-[var(--text-gray)]" />
+                <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-[var(--bg-hover)] rounded-full transition-colors">
+                  <X className="h-5 w-5 text-[var(--fg-muted)]" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto py-2">
                 <div className="px-2 mb-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Preferences</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--fg-muted)]">Preferences</p>
                   <button onClick={() => { toggleTheme(); setSidebarOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                     {theme === "dark" ? <Sun className="h-5 w-5 text-amber-500" /> : <Moon className="h-5 w-5 text-[#667eea]" />}
                     <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
                   </button>
                 </div>
 
                 <div className="px-2 mb-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Your Lists</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--fg-muted)]">Your Lists</p>
                   <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view saved products")) return; router.push("/saved"); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                     <Bookmark className="h-5 w-5 text-[#667eea]" />
                     <span>Saved Products</span>
                   </button>
                   <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "view followed shops")) return; router.push("/followed-shops"); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                     <Star className="h-5 w-5 text-[#667eea]" />
                     <span>Followed Shops</span>
                   </button>
                 </div>
 
                 <div className="px-2 mb-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Shop</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--fg-muted)]">Shop</p>
                   {!isCheckingShop && hasShop && (
                     <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "access my shop")) return; router.push("/shop/dashboard"); }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                       <Store className="h-5 w-5 text-[#667eea]" />
                       <span>My Shop</span>
                     </button>
                   )}
                   {!isCheckingShop && !hasShop && (
                     <button onClick={() => { setSidebarOpen(false); if (!checkAuth(user, "register a shop")) return; router.push("/onboarding/shop-registration"); }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                       <Plus className="h-5 w-5 text-[#667eea]" />
                       <span>Register Shop</span>
                     </button>
@@ -581,11 +601,11 @@ function MapPageContent() {
                 </div>
 
                 <div className="px-2">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-gray)]">Account</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--fg-muted)]">Account</p>
                   {user ? (
                     <>
                       <Link href="/profile" onClick={() => setSidebarOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                         <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-[9px] text-white font-bold">
                           {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
                         </div>
@@ -600,7 +620,7 @@ function MapPageContent() {
                   ) : (
                     <>
                       <Link href="/auth" onClick={() => setSidebarOpen(false)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--border-subtle)] text-[var(--text-dark)] text-sm transition-colors">
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--fg)] text-sm transition-colors">
                         <User className="h-5 w-5 text-[#667eea]" />
                         <span>Log in</span>
                       </Link>
