@@ -60,7 +60,7 @@ const FRESHNESS_STYLES = {
 
 export default function ShopDashboardPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, initializing } = useAuth();
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,7 +187,17 @@ export default function ShopDashboardPage() {
       else setCategoryError("Failed to reorder categories");
     } catch { setCategoryError("Failed to reorder categories"); }
   };
-
+  // Auth initializing guard — prevents "Shop not found" flash on refresh
+  if (initializing) {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{ background: "var(--background)" }}>
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] animate-pulse" />
+          <div className="absolute inset-0 rounded-2xl blur-xl opacity-40" style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }} />
+        </div>
+      </div>
+    );
+  }
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--bg)]">

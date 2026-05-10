@@ -2,8 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap } from "leaflet";
-import { YANGON_COORDINATES, MYANMAR_BOUNDS, TILE_LAYER_URL, TILE_LAYER_ATTRIBUTION, SATELLITE_TILE_URL, SATELLITE_ATTRIBUTION, LABELS_TILE_URL, LABELS_ATTRIBUTION } from "@/lib/leaflet-config";
+import {
+  YANGON_COORDINATES,
+  MYANMAR_BOUNDS,
+  TILE_LAYER_URL,
+  TILE_LAYER_ATTRIBUTION,
+  SATELLITE_TILE_URL,
+  SATELLITE_ATTRIBUTION,
+  LABELS_TILE_URL,
+  LABELS_ATTRIBUTION,
+} from "@/lib/leaflet-config";
 import { Loader2, MapPin, AlertCircle } from "lucide-react";
+
+// Default center — Mandalay
+const DEFAULT_CENTER: [number, number] = [21.9747, 96.0836];
 
 // Unified shop interface for map display
 interface MapShop {
@@ -44,13 +56,13 @@ interface MapComponentProps {
   onRetryShops: () => void;
   highlightedShopId?: string | null;
   initialCenter?: { lat: number; lng: number } | null;
-  radius?: number; // Search radius in km
+  radius?: number;
   route?: RouteData | null;
-  flyToUserLocation?: boolean; // Trigger fly to user location
-  onFlyComplete?: () => void; // Callback when fly completes
-  mapType?: 'street' | 'satellite'; // Map tile layer type
-  actualUserLat?: number; // Actual GPS location for fly-to-me button
-  actualUserLon?: number; // Actual GPS location for fly-to-me button
+  flyToUserLocation?: boolean;
+  onFlyComplete?: () => void;
+  mapType?: "street" | "satellite";
+  actualUserLat?: number;
+  actualUserLon?: number;
 }
 
 export function MapComponent({
@@ -65,11 +77,11 @@ export function MapComponent({
   onRetryShops,
   highlightedShopId,
   initialCenter,
-  radius = 5, // Default 5km
+  radius = 5,
   route,
   flyToUserLocation,
   onFlyComplete,
-  mapType = 'street',
+  mapType = "street",
   actualUserLat,
   actualUserLon,
 }: MapComponentProps) {
@@ -82,7 +94,7 @@ export function MapComponent({
   const routeShadowRef = useRef<unknown>(null);
   const routeStartMarkerRef = useRef<unknown>(null);
   const routeEndMarkerRef = useRef<unknown>(null);
-  const zoomRef = useRef<number>(14); // Track current zoom level
+  const zoomRef = useRef<number>(14);
   const baseTileLayerRef = useRef<unknown>(null);
   const labelsTileLayerRef = useRef<unknown>(null);
   const lastPannedLocationRef = useRef<{ lat: number; lon: number } | null>(null);
@@ -101,89 +113,51 @@ export function MapComponent({
     loadLeaflet();
   }, []);
 
-  // Initialize map
+  // Initialize map — ONLY runs once when Leaflet loads
   useEffect(() => {
     if (!leafletLoaded || !mapRef.current || mapInstanceRef.current) return;
 
     const L = window.L || require("leaflet");
 
-    // Determine initial center
-    // Use initialCenter if provided (from URL params), otherwise use user location
-    // Validate coordinates and fallback to default if invalid
-    let centerLat = initialCenter?.lat ?? userLat;
-    let centerLng = initialCenter?.lng ?? userLon;
-    
-    // Check for NaN or invalid coordinates
-    if (isNaN(centerLat) || isNaN(centerLng) || !centerLat || !centerLng) {
-      console.log("[Map] Invalid coordinates detected, using default location");
-      centerLat = (YANGON_COORDINATES as [number, number])[0];
-      centerLng = (YANGON_COORDINATES as [number, number])[1];
-    }
-    
-    // Use tracked zoom level to preserve user's zoom when map re-initializes
-    const isDefaultLocation =
-      centerLat === (YANGON_COORDINATES as [number, number])[0] &&
-      centerLng === (YANGON_COORDINATES as [number, number])[1];
-    const zoom = initialCenter && !isNaN(initialCenter.lat) ? 16 : (isDefaultLocation ? 12 : zoomRef.current);
+    const centerLat = DEFAULT_CENTER[0];
+    const centerLng = DEFAULT_CENTER[1];
+    const zoom = 12;
 
-    // Create map with bounds restricted to Myanmar
     const map = L.map(mapRef.current, {
       maxBounds: MYANMAR_BOUNDS,
-      maxBoundsViscosity: 1.0, // Prevents dragging outside bounds
-      zoomControl: false, // Disable +/- zoom buttons
+      maxBoundsViscosity: 1.0,
+      zoomControl: false,
     }).setView([centerLat, centerLng], zoom);
     mapInstanceRef.current = map;
 
-    // Track zoom changes to preserve user zoom level
-    map.on('zoomend', () => {
+    map.on("zoomend", () => {
       zoomRef.current = map.getZoom();
     });
 
-    // Add base tile layer based on mapType
-    if (mapType === 'satellite') {
-      const satelliteLayer = L.tileLayer(SATELLITE_TILE_URL, {
-        attribution: SATELLITE_ATTRIBUTION,
-        maxZoom: 18,
-        minZoom: 5,
-      }).addTo(map);
-      baseTileLayerRef.current = satelliteLayer;
+    // Add base tile layer
+    const streetLayer = L.tileLayer(TILE_LAYER_URL, {
+      attribution: TILE_LAYER_ATTRIBUTION,
+      maxZoom: 18,
+      minZoom: 5,
+    }).addTo(map);
+    baseTileLayerRef.current = streetLayer;
 
-      // Add labels overlay on top of satellite
-      const labelsLayer = L.tileLayer(LABELS_TILE_URL, {
-        attribution: LABELS_ATTRIBUTION,
-        maxZoom: 18,
-        minZoom: 5,
-        pane: 'tilePane',
-      }).addTo(map);
-      labelsLayer.setZIndex(250);
-      labelsTileLayerRef.current = labelsLayer;
-    } else {
-      // Street map
-      const streetLayer = L.tileLayer(TILE_LAYER_URL, {
-        attribution: TILE_LAYER_ATTRIBUTION,
-        maxZoom: 18,
-        minZoom: 5,
-      }).addTo(map);
-      baseTileLayerRef.current = streetLayer;
-    }
-
-    // Create Myanmar mask overlay (hide other countries)
+    // Create Myanmar mask overlay
     map.createPane("myanmarMask");
     const maskPane = map.getPane("myanmarMask");
     if (maskPane) {
-      // zIndex must be higher than tilePane (200) to show above tiles, but below shopMarkers (650)
       maskPane.style.zIndex = "250";
       maskPane.style.pointerEvents = "none";
     }
 
-    // Create a dedicated pane for shop markers so they render above overlay layers.
+    // Create a dedicated pane for shop markers
     map.createPane("shopMarkers");
     const shopMarkerPane = map.getPane("shopMarkers");
     if (shopMarkerPane) {
       shopMarkerPane.style.zIndex = "650";
     }
 
-    // Create dark mask covering world with hole for Myanmar (actual border shape)
+    // Dark mask covering world with hole for Myanmar
     const worldBounds: [number, number][] = [
       [-90, -180],
       [-90, 180],
@@ -191,13 +165,11 @@ export function MapComponent({
       [90, -180],
     ];
 
-    // Myanmar border polygon from real GeoJSON data
-    // Coordinates converted from GeoJSON [lng,lat] to Leaflet [lat,lng] format
     const myanmarBorder: [number, number][] = [
       [20.186598, 99.543309],
       [19.752981, 98.959676],
       [19.708203, 98.253724],
-      [18.627080, 97.797783],
+      [18.62708, 97.797783],
       [18.445438, 97.375896],
       [17.567946, 97.859123],
       [16.837836, 98.493761],
@@ -210,20 +182,20 @@ export function MapComponent({
       [12.804748, 99.196354],
       [11.892763, 99.587286],
       [10.960546, 99.038121],
-      [9.932960, 98.553551],
+      [9.93296, 98.553551],
       [10.675266, 98.457174],
       [11.441292, 98.764546],
       [12.032987, 98.428339],
       [13.122378, 98.509574],
-      [13.640460, 98.103604],
+      [13.64046, 98.103604],
       [14.837286, 97.777732],
       [16.100568, 97.597072],
-      [16.928734, 97.164540],
+      [16.928734, 97.16454],
       [16.427241, 96.505769],
-      [15.714390, 95.369352],
+      [15.71439, 95.369352],
       [15.803454, 94.808405],
       [16.037936, 94.188804],
-      [17.277240, 94.533486],
+      [17.27724, 94.533486],
       [18.213514, 94.324817],
       [19.366493, 93.540988],
       [19.726962, 93.663255],
@@ -232,7 +204,7 @@ export function MapComponent({
       [21.475485, 92.303234],
       [21.324048, 92.652257],
       [22.041239, 92.672721],
-      [22.278460, 93.166128],
+      [22.27846, 93.166128],
       [22.703111, 93.060294],
       [23.043658, 93.286327],
       [24.078556, 93.325188],
@@ -248,11 +220,11 @@ export function MapComponent({
       [28.261583, 97.327114],
       [28.335945, 97.911988],
       [27.747221, 98.246231],
-      [27.508812, 98.682690],
+      [27.508812, 98.68269],
       [26.743536, 98.712094],
       [25.918703, 98.671838],
       [25.083637, 97.724609],
-      [23.897405, 97.604720],
+      [23.897405, 97.60472],
       [24.063286, 98.660262],
       [23.142722, 98.898749],
       [22.949039, 99.531992],
@@ -262,11 +234,11 @@ export function MapComponent({
       [21.849984, 101.150033],
       [21.436573, 101.180005],
       [20.786122, 100.329101],
-      [20.417850, 100.115988],
-      [20.186598, 99.543309],  // Close loop
+      [20.41785, 100.115988],
+      [20.186598, 99.543309],
     ];
 
-    const maskLayer = L.polygon([worldBounds, myanmarBorder], {
+    L.polygon([worldBounds, myanmarBorder], {
       pane: "myanmarMask",
       fillColor: "#0f0f23",
       fillOpacity: 0.9,
@@ -281,60 +253,95 @@ export function MapComponent({
         mapInstanceRef.current = null;
       }
     };
-  }, [leafletLoaded, userLat, userLon]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leafletLoaded]);
 
-  // Update map view when user location changes - only if moved significantly (>100m)
+  // Handle initialCenter from URL params — just pans, doesn't re-init
+  useEffect(() => {
+    if (!mapInstanceRef.current || !leafletLoaded || !initialCenter) return;
+    const map = mapInstanceRef.current as {
+      setView: (coords: [number, number], zoom: number) => void;
+    };
+    map.setView([initialCenter.lat, initialCenter.lng], 16);
+  }, [initialCenter, leafletLoaded]);
+
+  // Update map view when user location changes — only if moved significantly (>100m)
   useEffect(() => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
 
-    const map = mapInstanceRef.current as { panTo: (coords: [number, number], options?: { animate?: boolean }) => void; getZoom: () => number };
+    const map = mapInstanceRef.current as {
+      panTo: (coords: [number, number], options?: { animate?: boolean }) => void;
+      getZoom: () => number;
+    };
 
-    // Do not override an explicit initial center from the URL.
     const isDefaultLocation =
-      userLat === (YANGON_COORDINATES as [number, number])[0] &&
-      userLon === (YANGON_COORDINATES as [number, number])[1];
-    const shouldPanToUser = !initialCenter && !isDefaultLocation && userLat && userLon;
+      userLat === DEFAULT_CENTER[0] && userLon === DEFAULT_CENTER[1];
+    const shouldPanToUser =
+      !initialCenter && !isDefaultLocation && userLat && userLon;
 
     if (shouldPanToUser) {
-      // Use lastPannedLocation ref to avoid excessive panning from GPS jitter
       if (lastPannedLocationRef.current) {
-        const dist = calculateDistance(userLat, userLon, lastPannedLocationRef.current.lat, lastPannedLocationRef.current.lon);
-        if (dist < 0.1) return; // Less than 100m - skip panning
+        const dist = calculateDistance(
+          userLat,
+          userLon,
+          lastPannedLocationRef.current.lat,
+          lastPannedLocationRef.current.lon
+        );
+        if (dist < 0.1) return;
       }
       lastPannedLocationRef.current = { lat: userLat, lon: userLon };
-      map.panTo([userLat, userLon]); // Use panTo instead of setView to preserve zoom
+      map.panTo([userLat, userLon]);
     }
   }, [userLat, userLon, leafletLoaded, initialCenter]);
 
   // Fly to user location when button is clicked
   useEffect(() => {
-    // Use actual GPS location if available, otherwise fall back to userLat/userLon
     const targetLat = actualUserLat ?? userLat;
     const targetLon = actualUserLon ?? userLon;
-    
-    if (!mapInstanceRef.current || !leafletLoaded || !flyToUserLocation || !targetLat || !targetLon) return;
 
-    const map = mapInstanceRef.current as { flyTo: (coords: [number, number], zoom: number, options?: { duration?: number }) => void };
+    if (
+      !mapInstanceRef.current ||
+      !leafletLoaded ||
+      !flyToUserLocation ||
+      !targetLat ||
+      !targetLon
+    )
+      return;
+
+    const map = mapInstanceRef.current as {
+      flyTo: (
+        coords: [number, number],
+        zoom: number,
+        options?: { duration?: number }
+      ) => void;
+    };
     map.flyTo([targetLat, targetLon], 15, { duration: 1.5 });
 
     if (onFlyComplete) {
       onFlyComplete();
     }
-  }, [flyToUserLocation, userLat, userLon, actualUserLat, actualUserLon, leafletLoaded, onFlyComplete]);
+  }, [
+    flyToUserLocation,
+    userLat,
+    userLon,
+    actualUserLat,
+    actualUserLon,
+    leafletLoaded,
+    onFlyComplete,
+  ]);
 
   // Switch tile layers when mapType changes
   useEffect(() => {
-    if (!mapInstanceRef.current || !leafletLoaded || !baseTileLayerRef.current) return;
+    if (!mapInstanceRef.current || !leafletLoaded || !baseTileLayerRef.current)
+      return;
 
     const L: typeof import("leaflet") = window.L || require("leaflet");
     const map = mapInstanceRef.current as L.Map;
     const baseLayer = baseTileLayerRef.current as L.TileLayer;
 
-    // Remove existing base layer
     map.removeLayer(baseLayer);
 
-    // Add new base layer based on mapType
-    if (mapType === 'satellite') {
+    if (mapType === "satellite") {
       const satelliteLayer = L.tileLayer(SATELLITE_TILE_URL, {
         attribution: SATELLITE_ATTRIBUTION,
         maxZoom: 18,
@@ -342,20 +349,17 @@ export function MapComponent({
       }).addTo(map);
       baseTileLayerRef.current = satelliteLayer;
 
-      // Add labels overlay on top of satellite
       if (!labelsTileLayerRef.current) {
         const labelsLayer = L.tileLayer(LABELS_TILE_URL, {
           attribution: LABELS_ATTRIBUTION,
           maxZoom: 18,
           minZoom: 5,
-          pane: 'tilePane',
+          pane: "tilePane",
         }).addTo(map);
-        // Bring labels to front
         labelsLayer.setZIndex(250);
         labelsTileLayerRef.current = labelsLayer;
       }
     } else {
-      // Street map
       const streetLayer = L.tileLayer(TILE_LAYER_URL, {
         attribution: TILE_LAYER_ATTRIBUTION,
         maxZoom: 18,
@@ -363,7 +367,6 @@ export function MapComponent({
       }).addTo(map);
       baseTileLayerRef.current = streetLayer;
 
-      // Remove labels layer if it exists
       if (labelsTileLayerRef.current) {
         map.removeLayer(labelsTileLayerRef.current as L.Layer);
         labelsTileLayerRef.current = null;
@@ -371,24 +374,22 @@ export function MapComponent({
     }
   }, [mapType, leafletLoaded]);
 
-  // Update radius circle - optimized to use setRadius instead of recreating
+  // Update radius circle
   useEffect(() => {
-    if (!mapInstanceRef.current || !leafletLoaded || !userLat || !userLon) return;
+    if (!mapInstanceRef.current || !leafletLoaded || !userLat || !userLon)
+      return;
 
     const L: typeof import("leaflet") = window.L || require("leaflet");
     const map = mapInstanceRef.current as L.Map;
 
-    // Convert km to meters for Leaflet
     const radiusMeters = radius * 1000;
 
-    // If circle already exists, just update radius
     if (radiusCircleRef.current) {
       const circle = radiusCircleRef.current as L.Circle;
       circle.setRadius(radiusMeters);
       return;
     }
 
-    // Create radius circle centered on user location (only once)
     const circle = L.circle([userLat, userLon], {
       radius: radiusMeters,
       color: "#667eea",
@@ -400,7 +401,6 @@ export function MapComponent({
 
     radiusCircleRef.current = circle;
 
-    // Add a user icon at the center of the radius (only once)
     if (!radiusLabelRef.current) {
       const userIcon = L.divIcon({
         className: "user-location-icon",
@@ -452,35 +452,32 @@ export function MapComponent({
   // Track the last rendered shop IDs to avoid unnecessary marker recreation
   const lastShopIdsRef = useRef<string>("");
 
-  // Update shop markers - only recreates when shop IDs actually change
+  // Update shop markers
   useEffect(() => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
 
-    // Compute current shop IDs string for comparison
-    const currentShopIds = shops.map(s => s.shop_id).sort().join(",");
-    
-    // Skip if shops haven't actually changed (same shop IDs)
+    const currentShopIds = shops.map((s) => s.shop_id).sort().join(",");
+
     if (currentShopIds === lastShopIdsRef.current && !highlightedShopId) return;
-    
-    // Update the ref
+
     lastShopIdsRef.current = currentShopIds;
 
     const L: typeof import("leaflet") = window.L || require("leaflet");
     const map = mapInstanceRef.current as L.Map;
 
-    // Clear existing shop markers
     markersRef.current.forEach((marker) => {
       map.removeLayer(marker as L.Layer);
     });
     markersRef.current = [];
 
-    // Add new shop markers
     const markerMap = new Map<string, unknown>();
-    
+
     shops.forEach((shop) => {
       const logoUrl = shop.logo_url;
       const logoHtml = logoUrl
-        ? `<img src="${logoUrl}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${getEmojiForCategory(shop.category)}'" />`
+        ? `<img src="${logoUrl}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${getEmojiForCategory(
+            shop.category
+          )}'" />`
         : getEmojiForCategory(shop.category);
       const shopIcon = L.divIcon({
         className: "shop-marker",
@@ -506,16 +503,20 @@ export function MapComponent({
         iconAnchor: [20, 20],
       });
 
-      const marker = L.marker([shop.latitude, shop.longitude], { icon: shopIcon, pane: "shopMarkers" }).addTo(map);
+      const marker = L.marker([shop.latitude, shop.longitude], {
+        icon: shopIcon,
+        pane: "shopMarkers",
+      }).addTo(map);
       if (typeof (marker as any).bringToFront === "function") {
         (marker as any).bringToFront();
       }
 
-      // Add popup
       marker.bindPopup(`
         <div style="text-align: center;">
           <strong>${shop.name}</strong><br>
-          <span style="color: #667eea; font-size: 12px;">${shop.distance_km.toFixed(1)} km away</span><br>
+          <span style="color: #667eea; font-size: 12px;">${shop.distance_km.toFixed(
+            1
+          )} km away</span><br>
           <span style="color: #666; font-size: 11px;">${shop.category}</span>
         </div>
       `);
@@ -524,12 +525,10 @@ export function MapComponent({
       markerMap.set(shop.shop_id, marker);
     });
 
-    // Open popup for highlighted shop (single search result)
     if (highlightedShopId && markerMap.has(highlightedShopId)) {
       const marker = markerMap.get(highlightedShopId);
       if (marker && (marker as { openPopup?: () => void }).openPopup) {
         (marker as { openPopup: () => void }).openPopup();
-        // Center map on the highlighted shop
         const shop = shops.find((s) => s.shop_id === highlightedShopId);
         if (shop) {
           map.setView([shop.latitude, shop.longitude], 16);
@@ -545,16 +544,12 @@ export function MapComponent({
     const L: typeof import("leaflet") = window.L || require("leaflet");
     const map = mapInstanceRef.current as L.Map;
 
-    // Check if map is ready
-    if (!map || typeof map.removeLayer !== 'function') return;
+    if (!map || typeof map.removeLayer !== "function") return;
 
-    // Remove existing route line and shadow
     if (routeLineRef.current) {
       try {
         map.removeLayer(routeLineRef.current as L.Layer);
-      } catch {
-        // Ignore errors
-      }
+      } catch {}
       routeLineRef.current = null;
     }
     if (routeShadowRef.current) {
@@ -564,7 +559,6 @@ export function MapComponent({
       routeShadowRef.current = null;
     }
 
-    // Remove existing start/end markers
     if (routeStartMarkerRef.current) {
       try {
         map.removeLayer(routeStartMarkerRef.current as L.Layer);
@@ -578,39 +572,38 @@ export function MapComponent({
       routeEndMarkerRef.current = null;
     }
 
-    // Debug logging
     console.log("Drawing route - full route object:", route);
-    console.log("Drawing route:", route?.coordinates?.length, "points", route?.coordinates);
+    console.log(
+      "Drawing route:",
+      route?.coordinates?.length,
+      "points",
+      route?.coordinates
+    );
 
-    // Draw new route line if route exists
     if (route && route.coordinates && route.coordinates.length > 1) {
       try {
-        // Create a more visible route line with shadow effect
-        // First add a shadow/outline polyline
         const shadowPolyline = L.polyline(route.coordinates, {
-          color: '#ffffff',
+          color: "#ffffff",
           weight: 12,
           opacity: 0.8,
-          lineCap: 'round',
-          lineJoin: 'round'
+          lineCap: "round",
+          lineJoin: "round",
         }).addTo(map);
 
-        // Main route line - solid bright blue
         const polyline = L.polyline(route.coordinates, {
-          color: '#3b82f6',
+          color: "#3b82f6",
           weight: 6,
           opacity: 1,
-          lineCap: 'round',
-          lineJoin: 'round'
+          lineCap: "round",
+          lineJoin: "round",
         }).addTo(map);
 
         routeLineRef.current = polyline;
         routeShadowRef.current = shadowPolyline;
 
-        // Add start marker (user location)
         const startCoords = route.coordinates[0];
         const startIcon = L.divIcon({
-          className: 'custom-start-marker',
+          className: "custom-start-marker",
           html: `<div style="
             background: #22c55e;
             width: 16px;
@@ -622,14 +615,16 @@ export function MapComponent({
           iconSize: [16, 16],
           iconAnchor: [8, 8],
         });
-        const startMarker = L.marker(startCoords, { icon: startIcon, zIndexOffset: 1000 }).addTo(map);
-        startMarker.bindPopup('<strong>Your Location</strong>');
+        const startMarker = L.marker(startCoords, {
+          icon: startIcon,
+          zIndexOffset: 1000,
+        }).addTo(map);
+        startMarker.bindPopup("<strong>Your Location</strong>");
         routeStartMarkerRef.current = startMarker;
 
-        // Add end marker (shop location)
         const endCoords = route.coordinates[route.coordinates.length - 1];
         const endIcon = L.divIcon({
-          className: 'custom-end-marker',
+          className: "custom-end-marker",
           html: `<div style="
             background: #ef4444;
             width: 20px;
@@ -644,11 +639,13 @@ export function MapComponent({
           iconSize: [20, 20],
           iconAnchor: [10, 10],
         });
-        const endMarker = L.marker(endCoords, { icon: endIcon, zIndexOffset: 1000 }).addTo(map);
-        endMarker.bindPopup('<strong>Destination</strong>');
+        const endMarker = L.marker(endCoords, {
+          icon: endIcon,
+          zIndexOffset: 1000,
+        }).addTo(map);
+        endMarker.bindPopup("<strong>Destination</strong>");
         routeEndMarkerRef.current = endMarker;
 
-        // Fit map to show the entire route
         const bounds = polyline.getBounds();
         if (bounds && bounds.isValid && bounds.isValid()) {
           map.fitBounds(bounds, { padding: [80, 80] });
@@ -720,16 +717,19 @@ export function MapComponent({
       )}
 
       {/* No shops message */}
-      {!shopsLoading && !shopsError && shops.length === 0 && !userLocationLoading && (
-        <div className="absolute left-4 right-4 bottom-4 z-[1000] rounded-lg bg-blue-50 px-4 py-3 shadow-lg">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-blue-500" />
-            <p className="text-sm text-blue-700">
-              No shops found nearby. Try increasing the radius.
-            </p>
+      {!shopsLoading &&
+        !shopsError &&
+        shops.length === 0 &&
+        !userLocationLoading && (
+          <div className="absolute left-4 right-4 bottom-4 z-[1000] rounded-lg bg-blue-50 px-4 py-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-500" />
+              <p className="text-sm text-blue-700">
+                No shops found nearby. Try increasing the radius.
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
@@ -763,8 +763,13 @@ function getEmojiForCategory(category: string): string {
 }
 
 // Haversine formula to calculate distance between two coordinates in kilometers
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in kilometers
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
