@@ -792,7 +792,7 @@ const FeaturedProductCard = React.memo(function FeaturedProductCard({ product, s
 });
 
 const AmazonProductCard = React.memo(function AmazonProductCard({ product, shop, language, t, onClick }: { product: Product; shop: Shop; language: Language; t: typeof TRANSLATIONS["en"]; onClick: () => void; }) {
-  const freshness = FRESHNESS_STYLES[product.freshness_badge];
+  const freshness = FRESHNESS_STYLES[product.freshness_badge] || FRESHNESS_STYLES.red;
   const displayName = language === "my" && product.product_name_mm ? product.product_name_mm : product.product_name;
   return (
     <motion.button whileHover={cardHover} onClick={onClick} className="group text-left w-full rounded-xl overflow-hidden"
@@ -805,9 +805,9 @@ const AmazonProductCard = React.memo(function AmazonProductCard({ product, shop,
             <Package className="h-12 w-12" style={{ color: "var(--fg-dim)" }} />
           </div>
         )}
-        {product.freshness_badge !== "red" && (
+        {product.freshness_badge !== "red" && freshness && (
           <div className="absolute top-2 left-2">
-            <span className="badge" style={{ background: freshness.bg, color: freshness.text, border: `1px solid ${freshness.border}` }}>
+            <span className="badge" style={{ background: freshness?.bg, color: freshness?.text, border: `1px solid ${freshness?.border}` }}>
               {freshnessLabels[language][product.freshness_badge]}
             </span>
           </div>
