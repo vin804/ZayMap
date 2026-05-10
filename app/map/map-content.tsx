@@ -375,14 +375,26 @@ function MapPageContent() {
                   <Menu className="h-5 w-5 text-[var(--text-dark)]" />
                 )}
               </button>
-              <Link href="/map" className="flex items-center gap-2 group">
-                <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/30 transition-shadow">
-                  <MapPin className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-lg font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
-                  ZayMap
-                </span>
-              </Link>
+<Link href="/map" className="flex items-center gap-2 group">
+  <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full overflow-hidden shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/30 transition-shadow">
+    <img 
+      src="/zaymap-logo.png" 
+      alt="ZayMap" 
+      className="w-full h-full object-cover"
+      onError={(e) => { 
+        (e.target as HTMLImageElement).style.display = 'none';
+        const parent = (e.target as HTMLImageElement).parentElement;
+        if (parent) {
+          parent.className += " bg-gradient-to-br from-[#667eea] to-[#764ba2]";
+          parent.innerHTML = '<span class="text-white font-bold text-sm">Z</span>';
+        }
+      }} 
+    />
+  </div>
+  <span className="text-lg font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
+    ZayMap
+  </span>
+</Link>
             </div>
 
             {/* Center: Actions */}
@@ -547,12 +559,24 @@ function MapPageContent() {
           >
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                <Link href="/map" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-[#667eea] to-[#764ba2]">
-                    <MapPin className="h-3.5 w-3.5 text-white" />
-                  </div>
-                  <span className="font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">ZayMap</span>
-                </Link>
+ <Link href="/map" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
+  <div className="flex items-center justify-center w-7 h-7 rounded-full overflow-hidden">
+    <img 
+      src="/zaymap-logo.png" 
+      alt="ZayMap" 
+      className="w-full h-full object-cover"
+      onError={(e) => { 
+        (e.target as HTMLImageElement).style.display = 'none';
+        const parent = (e.target as HTMLImageElement).parentElement;
+        if (parent) {
+          parent.className += " bg-gradient-to-br from-[#667eea] to-[#764ba2]";
+          parent.innerHTML = '<span class="text-white font-bold text-xs">Z</span>';
+        }
+      }} 
+    />
+  </div>
+  <span className="font-bold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">ZayMap</span>
+</Link>
                 <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-[var(--bg-hover)] rounded-full transition-colors">
                   <X className="h-5 w-5 text-[var(--fg-muted)]" />
                 </button>
