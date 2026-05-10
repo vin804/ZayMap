@@ -31,7 +31,7 @@ interface Product {
   currency: string;
   upload_timestamp: string;
   updated_at?: string;
-  freshness_badge: "green" | "orange" | "red";
+  freshness_status: "green" | "orange" | "red";
   average_rating: number;
   review_count: number;
 }
@@ -110,7 +110,7 @@ export async function GET(
         category_id: data.category_id || null,
         upload_timestamp: data.upload_timestamp || data.created_at || new Date().toISOString(),
         updated_at: data.updated_at,
-        freshness_badge: calculateFreshness(data.upload_timestamp || data.created_at || new Date().toISOString()),
+        freshness_status: calculateFreshness(data.upload_timestamp || data.created_at || new Date().toISOString()),
         average_rating,
         review_count: reviews.length,
       };

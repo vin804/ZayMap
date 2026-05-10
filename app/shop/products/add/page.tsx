@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { uploadImages } from "@/lib/upload";
 import { ProtectedRoute } from "@/components/protected-route";
-import { Loader2, Package, ArrowLeft, Upload, CheckCircle, AlertCircle, DollarSign, ImagePlus, X } from "lucide-react";
+import { Loader2, Package, ArrowLeft, Upload, CheckCircle, AlertCircle, DollarSign, ImagePlus, X, Tag, FileText } from "lucide-react";
 
 interface Category {
   id: string;
@@ -23,15 +23,6 @@ interface ProductFormData {
   category_id: string;
   images: File[];
 }
-
-const CATEGORIES = [
-  { value: "clothes", label: "👕 Clothes", label_mm: "👕 အဝတ်အစား" },
-  { value: "electronics", label: "📱 Electronics", label_mm: "📱 အီလက်ထရွန်နစ်" },
-  { value: "food", label: "🍜 Food", label_mm: "🍜 အစားအသောက်" },
-  { value: "cosmetics", label: "💄 Cosmetics", label_mm: "💄 အလှကုန်" },
-  { value: "second_hand", label: "♻️ Second-hand", label_mm: "♻️ ရောင်းချမှု" },
-  { value: "other", label: "🏪 Other", label_mm: "🏪 အခြား" },
-];
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -53,7 +44,6 @@ export default function AddProductPage() {
   });
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Fetch user's shop and categories
   useEffect(() => {
     const fetchShop = async () => {
       if (!user?.uid) return;
@@ -77,27 +67,25 @@ export default function AddProductPage() {
     const files = Array.from(e.target.files || []);
     if (files.length + formData.images.length > 5) {
       setError("Maximum 5 images allowed");
-      e.target.value = ""; // Reset input
+      e.target.value = "";
       return;
     }
 
-    // Validate file size and type
     for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
         setError("Image size must be less than 5MB");
-        e.target.value = ""; // Reset input
+        e.target.value = "";
         return;
       }
       if (!file.type.startsWith("image/")) {
         setError("Only image files allowed");
-        e.target.value = ""; // Reset input
+        e.target.value = "";
         return;
       }
     }
 
     setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
     
-    // Create previews
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -106,7 +94,7 @@ export default function AddProductPage() {
       reader.readAsDataURL(file);
     });
     setError(null);
-    e.target.value = ""; // Reset input to allow selecting more images
+    e.target.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -130,7 +118,6 @@ export default function AddProductPage() {
     try {
       let imageUrls: string[] = [];
 
-      // Upload images if any
       if (formData.images.length > 0) {
         setUploadLoading(true);
         const uploadResult = await uploadImages(formData.images, "products");
@@ -141,7 +128,6 @@ export default function AddProductPage() {
         imageUrls = uploadResult.urls;
       }
 
-      // Create product with uploaded image URLs
       const response = await fetch("/api/products/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -172,35 +158,22 @@ export default function AddProductPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-green-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-2">Product Added!</h1>
-          <p className="text-[var(--text-gray)] mb-8">Your product is now visible on the map.</p>
+          <h1 className="text-2xl font-bold text-[var(--fg)] mb-2">Product Added!</h1>
+          <p className="text-[var(--fg-muted)] mb-8">Your product is now visible on the map.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => router.push("/shop/dashboard")}
-              className="px-8 py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-            >
+            <button onClick={() => router.push("/shop/dashboard")} className="btn-gradient px-8 py-4">
               Back to Dashboard
             </button>
-            <button
-              onClick={() => {
-                setSuccess(false);
-                setFormData({
-                  name: "",
-                  name_mm: "",
-                  description: "",
-                  price: 0,
-                  category_id: "",
-                  images: [],
-                });
-                setImagePreviews([]);
-              }}
-              className="px-8 py-4 border-2 border-[#667eea] text-[#667eea] rounded-xl font-semibold hover:bg-[#667eea] hover:text-white transition-all"
-            >
+            <button onClick={() => {
+              setSuccess(false);
+              setFormData({ name: "", name_mm: "", description: "", price: 0, category_id: "", images: [] });
+              setImagePreviews([]);
+            }} className="btn-outline px-8 py-4">
               Add Another
             </button>
           </div>
@@ -211,83 +184,84 @@ export default function AddProductPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[var(--background)]">
-        {/* Header */}
-        <header className="bg-[var(--card-bg)] border-b border-gray-200/20 sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => router.push("/shop/dashboard")}
-                  className="p-2 -ml-2 rounded-full hover:bg-gray-500/10 transition-colors"
-                >
-                  <ArrowLeft className="h-5 w-5 text-[var(--text-gray)]" />
-                </button>
-                <h1 className="text-xl font-semibold text-[var(--text-dark)]">Add New Product</h1>
-              </div>
+      <div className="min-h-screen bg-[var(--bg)]">
+        {/* Glass Header */}
+        <header className="sticky top-0 z-50 bg-[var(--bg-elevated)]/80 backdrop-blur-xl border-b border-[var(--border)]">
+          <div className="max-w-3xl mx-auto px-4 py-3">
+            <div className="flex items-center gap-3">
+              <button onClick={() => router.push("/shop/dashboard")} className="btn-ghost w-9 h-9 flex items-center justify-center">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h1 className="text-lg font-bold text-[var(--fg)]">Add New Product</h1>
             </div>
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-6">
+        <main className="max-w-3xl mx-auto px-4 py-6">
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-500">
-              <AlertCircle className="h-5 w-5" />
+            <div className="alert alert-error mb-6">
+              <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Product Name */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
                 Product Name <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter product name"
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
-                required
-              />
+              <div className="relative">
+                <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-dim)]" />
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter product name"
+                  className="input-field !pl-10"
+                  required
+                />
+              </div>
             </div>
 
             {/* Product Name (Myanmar) */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                Product Name (Myanmar)
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
+                Product Name (Myanmar) <span className="text-[var(--fg-dim)]">(Optional)</span>
               </label>
               <input
                 type="text"
                 value={formData.name_mm}
                 onChange={(e) => setFormData(prev => ({ ...prev, name_mm: e.target.value }))}
                 placeholder="မြန်မာဘာသာဖြင့် ထည့်ပါ"
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                className="input-field"
               />
             </div>
 
             {/* Description */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                Description
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
+                Description <span className="text-[var(--fg-dim)]">(Optional)</span>
               </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Describe your product..."
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)] resize-none"
-              />
+              <div className="relative">
+                <FileText className="absolute left-3.5 top-3.5 h-4 w-4 text-[var(--fg-dim)]" />
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe your product..."
+                  rows={4}
+                  className="input-field !pl-10 resize-none"
+                />
+              </div>
             </div>
 
             {/* Price */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
                 Product Price (MMK) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-gray)]" />
+                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-dim)]" />
                 <input
                   type="number"
                   value={formData.price || ""}
@@ -297,25 +271,24 @@ export default function AddProductPage() {
                     setFormData(prev => ({ ...prev, price: numValue }));
                   }}
                   min={1}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                  placeholder="0"
+                  className="input-field !pl-10"
                   required
                 />
               </div>
-              <p className="text-sm text-[var(--text-gray)] mt-1">
-                Actual price of the product.
-              </p>
+              <p className="text-xs text-[var(--fg-muted)] mt-1.5">Actual price of the product.</p>
             </div>
 
-            {/* Custom Category Dropdown */}
+            {/* Category */}
             {categories.length > 0 && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
-                  Product Category (Optional)
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
+                  Product Category <span className="text-[var(--fg-dim)]">(Optional)</span>
                 </label>
                 <select
                   value={formData.category_id}
                   onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200/20 bg-[var(--card-bg)] rounded-xl focus:ring-2 focus:ring-[#667eea] focus:border-transparent outline-none text-[var(--text-dark)]"
+                  className="select-field"
                 >
                   <option value="">-- Select a category --</option>
                   {categories.map((cat) => (
@@ -324,35 +297,27 @@ export default function AddProductPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-sm text-[var(--text-gray)] mt-1">
-                  Assign this product to a custom category.
-                </p>
+                <p className="text-xs text-[var(--fg-muted)] mt-1.5">Assign this product to a custom category.</p>
               </div>
             )}
 
             {/* Image Upload */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--text-gray)] mb-2">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
                 Product Images <span className="text-red-500">*</span>
               </label>
-              <p className="text-sm text-[var(--text-gray)] mb-3">
-                Upload up to 5 images (max 5MB each)
-              </p>
+              <p className="text-xs text-[var(--fg-muted)] mb-3">Upload up to 5 images (max 5MB each)</p>
               
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
                 <div className="flex flex-wrap gap-3 mb-4">
                   {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-24 h-24 object-cover rounded-xl"
-                      />
+                    <div key={index} className="relative group">
+                      <img src={preview} alt={`Preview ${index + 1}`} className="w-24 h-24 object-cover rounded-xl border border-[var(--border)]" />
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -363,46 +328,25 @@ export default function AddProductPage() {
 
               {/* Upload Button */}
               {imagePreviews.length < 5 && (
-                <label className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-gray-500/30 rounded-xl cursor-pointer hover:border-[#667eea] hover:bg-gray-500/10 transition-colors">
+                <label className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-[var(--border)] rounded-xl cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] transition-all">
                   <div className="text-center">
-                    <ImagePlus className="h-8 w-8 text-[var(--text-gray)] mx-auto mb-2" />
-                    <span className="text-sm text-[var(--text-gray)]">Add Photo</span>
-                    <span className="text-xs text-gray-500 block mt-1">
-                      {imagePreviews.length}/5
-                    </span>
+                    <ImagePlus className="h-8 w-8 text-[var(--fg-dim)] mx-auto mb-2" />
+                    <span className="text-sm text-[var(--fg-muted)]">Add Photo</span>
+                    <span className="text-xs text-[var(--fg-dim)] block mt-1">{imagePreviews.length}/5</span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
+                  <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
                 </label>
               )}
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading || uploadLoading || !shopId}
-              className="w-full py-4 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
+            {/* Submit */}
+            <button type="submit" disabled={loading || uploadLoading || !shopId} className="btn-gradient w-full py-4">
               {uploadLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Uploading images...</span>
-                </>
+                <span className="flex items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Uploading images...</span>
               ) : loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Creating...</span>
-                </>
+                <span className="flex items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Creating...</span>
               ) : (
-                <>
-                  <Package className="h-5 w-5" />
-                  <span>Add Product</span>
-                </>
+                <span className="flex items-center justify-center gap-2"><Package className="h-5 w-5" /> Add Product</span>
               )}
             </button>
           </form>
