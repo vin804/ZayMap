@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { uploadImages } from "@/lib/upload";
@@ -238,19 +238,18 @@ export default function AddProductPage() {
               />
             </div>
 
-            {/* Description */}
+              {/* Description */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-2">
                 Description <span className="text-[var(--fg-dim)]">(Optional)</span>
               </label>
               <div className="relative">
-                <FileText className="absolute left-3.5 top-3.5 h-4 w-4 text-[var(--fg-dim)]" />
-                <textarea
+                <FileText className="absolute left-3.5 top-3.5 h-4 w-4 text-[var(--fg-dim)] z-10" />
+                <AutoExpandingTextarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
                   placeholder="Describe your product..."
-                  rows={4}
-                  className="input-field !pl-10 resize-none"
+                  className="input-field !pl-10 resize-none overflow-hidden"
                 />
               </div>
             </div>
@@ -354,4 +353,39 @@ export default function AddProductPage() {
       </div>
     </ProtectedRoute>
   );
+  function AutoExpandingTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className: string;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        e.target.style.height = "auto";
+        e.target.style.height = e.target.scrollHeight + "px";
+      }}
+      placeholder={placeholder}
+      className={className}
+      style={{ minHeight: "52px" }}
+    />
+  );
+}
 }

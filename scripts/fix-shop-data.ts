@@ -138,7 +138,7 @@ async function fixExistingShop(shopId: string) {
   
   if (!shopSnap.exists) {
     console.log('Shop not found, creating new...');
-    return createNewShop(shopId, 0);
+    return createNewShop(0, 0);
   }
   
   const data = shopSnap.data()!;

@@ -242,7 +242,7 @@ export default function ShopDashboardPage() {
           {/* Skeleton Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)] p-5">
+              <div key={i} className="bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)] p-5 last:col-span-2 md:last:col-span-1">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-9 w-9 rounded-xl animate-pulse bg-[var(--bg-hover)]" />
                   <div className="h-3 w-16 rounded animate-pulse bg-[var(--bg-hover)]" />
@@ -408,7 +408,7 @@ export default function ShopDashboardPage() {
               { label: "Rating", value: shop.rating?.toFixed(1) || "0.0", icon: Star, color: "from-yellow-500 to-amber-600" },
               { label: "Reviews", value: shop.review_count || 0, icon: Users, color: "from-[#667eea] to-[#764ba2]" },
             ].map((stat) => (
-              <div key={stat.label} className="bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)] p-5 shadow-[0_4px_16px_rgba(15,17,26,0.05)]">
+              <div key={stat.label} className="bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)] p-5 shadow-[0_4px_16px_rgba(15,17,26,0.05)] last:col-span-2 md:last:col-span-1">
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
                     <stat.icon className="h-4 w-4 text-white" />

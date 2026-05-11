@@ -21,7 +21,7 @@ export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
     } catch {
       // Error handled by auth context
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
 

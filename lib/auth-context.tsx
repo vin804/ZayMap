@@ -22,6 +22,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { FacebookAuthProvider } from "firebase/auth";
 import { auth, db, googleProvider } from "./firebase";
+import { ADMIN_UID } from "./admin-config";
 
 export interface User {
   uid: string;
@@ -49,6 +50,7 @@ interface AuthContextType {
   loading: boolean;
   initializing: boolean;
   error: string | null;
+  isAdmin: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -162,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!auth) {
@@ -187,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
+        setIsAdmin(firebaseUser.uid === ADMIN_UID);
         try {
           const userProfile = await createUserProfile(firebaseUser);
           setUser(userProfile);
@@ -197,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
         setFirebaseUser(null);
+        setIsAdmin(false);
       }
       setInitializing(false);
     });
@@ -291,6 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     initializing,
     error,
+    isAdmin,
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
