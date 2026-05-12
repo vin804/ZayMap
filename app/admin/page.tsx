@@ -59,6 +59,7 @@ interface Shop {
   name: string;
   category: string;
   owner_id: string;
+  owner_name?: string;   // <-- ADD THIS
   latitude: number;
   longitude: number;
   logo_url?: string;

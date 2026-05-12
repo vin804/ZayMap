@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Copy, Check, ExternalLink, Store } from "lucide-react";
+import { MapPin, Copy, Check, ExternalLink, Store, User } from "lucide-react";
 
 interface AdminShopCardProps {
   shop: {
@@ -9,6 +9,7 @@ interface AdminShopCardProps {
     name: string;
     category: string;
     owner_id: string;
+    owner_name?: string;        // <-- ADD THIS
     created_by?: string;
     latitude: number;
     longitude: number;
@@ -61,10 +62,18 @@ export function AdminShopCard({ shop, onCopyLink, onOpenDashboard }: AdminShopCa
               {shop.name.charAt(0).toUpperCase()}
             </div>
           )}
-          <div>
-            <h3 className="font-semibold text-[var(--text-dark)] text-sm">{shop.name}</h3>
-            <p className="text-xs text-[var(--text-gray)]">{shop.category}</p>
-          </div>
+<div>
+  <h3 className="font-semibold text-[var(--text-dark)] text-sm">{shop.name}</h3>
+  <p className="text-xs text-[var(--text-gray)]">{shop.category}</p>
+  
+  {/* Owner Name */}
+  <div className="flex items-center gap-1 mt-1">
+    <User className="h-3 w-3 text-[var(--text-gray)]" />
+    <span className="text-xs text-[var(--text-gray)]">
+      {isOwnerless ? "Unclaimed" : (shop.owner_name || "Unknown")}
+    </span>
+  </div>
+</div>
         </div>
         <span
           className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${

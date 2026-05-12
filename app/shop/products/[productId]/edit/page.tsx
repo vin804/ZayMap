@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { uploadImages } from "@/lib/upload";
@@ -38,6 +38,7 @@ interface ProductFormData {
   description: string;
   price: number;
   category: string;
+  category_id: string;
   images: File[];
   existingImages: string[];
 }
@@ -60,7 +61,9 @@ const fieldVariants = {
 export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const productId = params.productId as string;
+  const adminShopId = searchParams.get("shop");
   const { user } = useAuth();
   const { theme } = useTheme();
   const [shopId, setShopId] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export default function EditProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [shopCategories, setShopCategories] = useState<Array<{id: string; name?: string; name_mm?: string; icon?: string}>>([]);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
@@ -77,9 +81,13 @@ export default function EditProductPage() {
     description: "",
     price: 0,
     category: "other",
+    category_id: "",
     images: [],
     existingImages: [],
   });
+
+  // Compute dashboard return URL
+  const dashboardUrl = adminShopId ? `/shop/dashboard?shop=${adminShopId}` : "/shop/dashboard";
 
   // Load product data once on mount
   useEffect(() => {
@@ -94,15 +102,27 @@ export default function EditProductPage() {
       try {
         setLoading(true);
 
-        // Fetch shop
-        const shopRes = await fetch(`/api/shops/my-shop?owner_id=${uid}`);
+        // Fetch shop — admin viewing via ?shop= or owner viewing my-shop
+        let shopRes;
+        if (adminShopId) {
+          shopRes = await fetch(`/api/shops/${adminShopId}`);
+        } else {
+          shopRes = await fetch(`/api/shops/my-shop?owner_id=${uid}`);
+        }
+
         if (!shopRes.ok) {
-          router.push("/onboarding/shop-registration");
+          if (!adminShopId) {
+            router.push("/onboarding/shop-registration");
+          } else if (isMounted) {
+            setError("Shop not found");
+          }
           return;
         }
+
         const shopData = await shopRes.json();
         if (!isMounted) return;
         setShopId(shopData.data.shop_id);
+        setShopCategories(shopData.data.categories || []);
 
         // Fetch product
         const productRes = await fetch(`/api/products/${pid}`);
@@ -126,6 +146,7 @@ export default function EditProductPage() {
             description: product.description || "",
             price: product.price || 0,
             category: product.category || "other",
+            category_id: product.category_id || "",
             images: [],
             existingImages: product.image_urls || [],
           });
@@ -143,7 +164,7 @@ export default function EditProductPage() {
     return () => {
       isMounted = false;
     };
-     }, [user?.uid, productId]);
+  }, [user?.uid, productId, adminShopId]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -244,6 +265,7 @@ export default function EditProductPage() {
           description: formData.description,
           price: formData.price,
           category: formData.category,
+          category_id: formData.category_id || undefined,
           image_urls: allImages,
         }),
       });
@@ -322,7 +344,7 @@ export default function EditProductPage() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => router.push("/shop/dashboard")}
+              onClick={() => router.push(dashboardUrl)}
               className="px-6 py-3 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl font-semibold shadow-lg shadow-purple-500/20 hover:shadow-xl transition-shadow"
             >
               Back to Dashboard
@@ -373,7 +395,7 @@ export default function EditProductPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => router.push("/shop/dashboard")}
+                onClick={() => router.push(dashboardUrl)}
                 className="p-2 rounded-xl transition-colors"
                 style={{ color: "var(--fg)" }}
                 onMouseEnter={(e) => {
@@ -512,10 +534,10 @@ export default function EditProductPage() {
               </p>
             </motion.div>
 
-            {/* Category */}
+            {/* Product Type */}
             <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={4}>
               <label className="block text-sm font-semibold mb-2" style={labelStyle}>
-                Category <span className="text-red-500">*</span>
+                Product Type <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
@@ -544,8 +566,43 @@ export default function EditProductPage() {
               </div>
             </motion.div>
 
+            {/* Shop Category */}
+            {shopCategories.length > 0 && (
+              <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={5}>
+                <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                  Shop Category <span className="font-normal" style={optionalStyle}>(Optional)</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={formData.category_id}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, category_id: e.target.value }))}
+                    className={`${inputBaseClasses} appearance-none cursor-pointer`}
+                    style={inputStyle}
+                  >
+                    <option value="">-- Select a category --</option>
+                    {shopCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon || "📦"} {cat.name || cat.name_mm || "Unnamed"}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg
+                      className="w-4 h-4"
+                      style={{ color: "var(--fg-dim)" }}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Images */}
-            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={5}>
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={6}>
               <label className="block text-sm font-semibold mb-1" style={labelStyle}>
                 Product Images <span className="text-red-500">*</span>
               </label>
@@ -629,7 +686,7 @@ export default function EditProductPage() {
               variants={fieldVariants}
               initial="hidden"
               animate="visible"
-              custom={6}
+              custom={7}
               className="pt-2"
             >
               <motion.button

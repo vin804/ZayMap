@@ -77,6 +77,13 @@ export default function ShopDashboardPage() {
   const [editCategoryData, setEditCategoryData] = useState({ name: "", name_mm: "", icon: "" });
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
+  // Helper to build edit URLs with admin shop param
+  const getEditUrl = (productId: string) => {
+    return adminShopId
+      ? `/shop/products/${productId}/edit?shop=${adminShopId}`
+      : `/shop/products/${productId}/edit`;
+  };
+
   const handleDeleteShop = async () => {
     if (!shop) return;
     setDeleting(true);
@@ -173,7 +180,10 @@ export default function ShopDashboardPage() {
         const data = await response.json();
         setShop(prev => prev ? { ...prev, categories: prev.categories?.map(cat => cat.id === editingCategory ? data.data : cat) || [] } : null);
         setEditingCategory(null); setCategoryError(null);
-      } else { setCategoryError("Failed to update category"); }
+      } else {
+        const errData = await response.json().catch(() => ({ error: "Failed to update category" }));
+        setCategoryError(errData.error || "Failed to update category");
+      }
     } catch { setCategoryError("Failed to update category"); }
   };
 
@@ -351,7 +361,7 @@ export default function ShopDashboardPage() {
                 <button onClick={() => setShowDeleteConfirm(true)} className="btn-ghost w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-500/10" title="Delete Shop">
                   <Trash2 className="h-5 w-5" />
                 </button>
-                <button onClick={() => router.push("/shop/settings")} className="btn-ghost w-9 h-9 flex items-center justify-center" title="Shop Settings">
+                <button onClick={() => router.push(adminShopId ? `/shop/settings?shop=${adminShopId}` : "/shop/settings")} className="btn-ghost w-9 h-9 flex items-center justify-center" title="Shop Settings">
                   <Settings className="h-5 w-5" />
                 </button>
                 <button onClick={logout} className="btn-ghost w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-500/10" title="Logout">
@@ -525,8 +535,8 @@ export default function ShopDashboardPage() {
                     <button onClick={() => setViewMode("list")} className={`p-2 rounded-md transition-colors ${viewMode === "list" ? "bg-[var(--bg-elevated)] shadow-sm" : "hover:bg-[var(--border-hover)]"}`}><List className="h-4 w-4 text-[var(--fg-muted)]" /></button>
                     <button onClick={() => setViewMode("grid")} className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? "bg-[var(--bg-elevated)] shadow-sm" : "hover:bg-[var(--border-hover)]"}`}><Grid3X3 className="h-4 w-4 text-[var(--fg-muted)]" /></button>
                   </div>
-                  <button onClick={() => router.push("/shop/products/renew")} className="btn-outline text-sm px-3 py-2"><RefreshCw className="h-4 w-4" /></button>
-                  <button onClick={() => router.push("/shop/products/add")} className="btn-gradient text-sm px-4 py-2"><Plus className="h-4 w-4" /> Add</button>
+                  <button onClick={() => router.push(adminShopId ? `/shop/products/renew?shop=${adminShopId}` : "/shop/products/renew")} className="btn-outline text-sm px-3 py-2"><RefreshCw className="h-4 w-4" /></button>
+                  <button onClick={() => router.push(adminShopId ? `/shop/products/add?shop=${adminShopId}` : "/shop/products/add")} className="btn-gradient text-sm px-4 py-2"><Plus className="h-4 w-4" /> Add</button>
                 </div>
               </div>
             </div>
@@ -538,14 +548,14 @@ export default function ShopDashboardPage() {
                 </div>
                 <h4 className="text-base font-semibold text-[var(--fg)] mb-1">No products yet</h4>
                 <p className="text-sm text-[var(--fg-muted)] mb-4">Start selling by adding your first product</p>
-                <button onClick={() => router.push("/shop/products/add")} className="btn-gradient px-6 py-3">Add First Product</button>
+                <button onClick={() => router.push(adminShopId ? `/shop/products/add?shop=${adminShopId}` : "/shop/products/add")} className="btn-gradient px-6 py-3">Add First Product</button>
               </div>
             ) : viewMode === "list" ? (
               <div className="divide-y divide-[var(--border)]">
                 {products.map((product) => {
                   const f = FRESHNESS_STYLES[product.freshness_status] || FRESHNESS_STYLES.red;
                   return (
-                    <div key={product.product_id} className="p-4 flex items-center gap-4 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => router.push(`/shop/products/${product.product_id}/edit`)}>
+                    <div key={product.product_id} className="p-4 flex items-center gap-4 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => router.push(getEditUrl(product.product_id))}>
                       <div className="w-14 h-14 bg-[var(--bg)] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden border border-[var(--border)]">
                         {product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.product_name} className="w-full h-full object-cover" /> : <Package className="h-6 w-6 text-[var(--fg-dim)]" />}
                       </div>
@@ -557,7 +567,7 @@ export default function ShopDashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={(e) => { e.stopPropagation(); router.push(`/shop/products/${product.product_id}/edit`); }} className="btn-ghost w-8 h-8" title="Edit"><Edit className="h-4 w-4" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); router.push(getEditUrl(product.product_id)); }} className="btn-ghost w-8 h-8" title="Edit"><Edit className="h-4 w-4" /></button>
                         <button onClick={(e) => { e.stopPropagation(); router.push(`/product/${product.product_id}`); }} className="btn-ghost w-8 h-8" title="View"><Eye className="h-4 w-4" /></button>
                       </div>
                     </div>
@@ -569,12 +579,12 @@ export default function ShopDashboardPage() {
                 {products.map((product) => {
                   const f = FRESHNESS_STYLES[product.freshness_status] || FRESHNESS_STYLES.red;
                   return (
-                    <div key={product.product_id} className="group bg-[var(--bg)] rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-[0_12px_32px_rgba(15,17,26,0.06)] transition-all cursor-pointer" onClick={() => router.push(`/shop/products/${product.product_id}/edit`)}>
+                    <div key={product.product_id} className="group bg-[var(--bg)] rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-[0_12px_32px_rgba(15,17,26,0.06)] transition-all cursor-pointer" onClick={() => router.push(getEditUrl(product.product_id))}>
                       <div className="aspect-square bg-[var(--bg)] flex items-center justify-center overflow-hidden relative">
                         {product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <Package className="h-10 w-10 text-[var(--fg-dim)]" />}
                         <span className="absolute top-2 left-2 badge" style={{ background: f.bg, color: f.text, border: `1px solid ${f.border}` }}>{f.label}</span>
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); router.push(`/shop/products/${product.product_id}/edit`); }} className="p-2 bg-white rounded-full hover:bg-gray-100"><Edit className="h-4 w-4 text-gray-700" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); router.push(getEditUrl(product.product_id)); }} className="p-2 bg-white rounded-full hover:bg-gray-100"><Edit className="h-4 w-4 text-gray-700" /></button>
                           <button onClick={(e) => { e.stopPropagation(); router.push(`/product/${product.product_id}`); }} className="p-2 bg-white rounded-full hover:bg-gray-100"><Eye className="h-4 w-4 text-gray-700" /></button>
                         </div>
                       </div>

@@ -48,15 +48,11 @@ export async function POST(
 
     const shopData = shopSnap.data();
 
-    // Verify ownership
+    // Verify ownership (owner or creator/admin)
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
-    console.log("Auth check:", { userId, ownerId, shopFields: {
-      owner_id: shopData.owner_id,
-      owner_uid: shopData.owner_uid,
-      user_id: shopData.user_id
-    }});
-    if (userId !== ownerId) {
-      return NextResponse.json({ error: "Unauthorized", debug: { userId, ownerId } }, { status: 403 });
+    const creatorId = shopData.created_by;
+    if (userId !== ownerId && userId !== creatorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     // Check for duplicate names (case-insensitive)
@@ -132,9 +128,10 @@ export async function PUT(
 
     const shopData = shopSnap.data();
 
-    // Verify ownership
+    // Verify ownership (owner or creator/admin)
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
-    if (userId !== ownerId) {
+    const creatorId = shopData.created_by;
+    if (userId !== ownerId && userId !== creatorId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -165,12 +162,15 @@ export async function PUT(
     }
 
     // Update category
-    const updatedCategory = {
-      ...categories[categoryIndex],
-      name: name?.trim() || categories[categoryIndex].name,
-      name_mm: name_mm?.trim() || categories[categoryIndex].name_mm,
-      icon: icon?.trim() || categories[categoryIndex].icon,
-    };
+    const updatedCategory: Record<string, any> = { ...categories[categoryIndex] };
+    if (name?.trim()) updatedCategory.name = name.trim();
+    if (name_mm?.trim()) updatedCategory.name_mm = name_mm.trim();
+    if (icon?.trim()) updatedCategory.icon = icon.trim();
+
+    // Remove undefined values for Firestore compatibility
+    Object.keys(updatedCategory).forEach((key) => {
+      if (updatedCategory[key] === undefined) delete updatedCategory[key];
+    });
 
     categories[categoryIndex] = updatedCategory;
 
@@ -217,9 +217,10 @@ export async function DELETE(
 
     const shopData = shopSnap.data();
 
-    // Verify ownership
+    // Verify ownership (owner or creator/admin)
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
-    if (userId !== ownerId) {
+    const creatorId = shopData.created_by;
+    if (userId !== ownerId && userId !== creatorId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

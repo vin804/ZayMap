@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, addDoc, serverTimestamp, GeoPoint, getDocs } from "firebase/firestore";
+import { getFirestore, collection, addDoc, serverTimestamp, GeoPoint, getDocs, doc, getDoc } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
 import { ADMIN_UID } from "@/lib/admin-config";
 
@@ -26,7 +26,7 @@ function assertAdmin(request: NextRequest) {
   }
 }
 
-// GET /api/admin/shops — list all shops (readable by any admin page, mutation is protected)
+// GET /api/admin/shops — list all shops with owner names
 export async function GET() {
   try {
     const db = getDb();
@@ -42,9 +42,9 @@ export async function GET() {
       return hasTestId || hasTestOwner || shopData.isTestShop === true;
     }
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const shopId = doc.id;
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const shopId = docSnap.id;
 
       if (isSampleShop(data, shopId)) {
         console.log(`[Admin API] Skipping sample/test shop: ${shopId}`);
@@ -71,7 +71,7 @@ export async function GET() {
       }
 
       shops.push({
-        shop_id: doc.id,
+        shop_id: docSnap.id,
         name: data.name,
         name_mm: data.name_mm || "",
         category: data.category,
@@ -88,6 +88,33 @@ export async function GET() {
         created_at: data.created_at?.toDate?.()?.toISOString?.() || new Date().toISOString(),
       });
     });
+
+    // Fetch owner names from users collection
+    const ownerIds = [...new Set(
+      shops.map((s) => s.owner_id).filter((id) => id && id !== "PENDING" && id !== "")
+    )];
+
+    const ownerMap = new Map<string, string>();
+    await Promise.all(
+      ownerIds.map(async (uid) => {
+        try {
+          const userSnap = await getDoc(doc(db, "users", uid));
+          if (userSnap.exists()) {
+            const u = userSnap.data();
+            ownerMap.set(uid, u.displayName || u.name || u.email || "Unknown");
+          }
+        } catch {
+          // silently skip users that fail to load
+        }
+      })
+    );
+
+    shops.forEach((shop) => {
+      if (shop.owner_id && shop.owner_id !== "PENDING") {
+        shop.owner_name = ownerMap.get(shop.owner_id) || "Unknown";
+      }
+    });
+
     return NextResponse.json({ shops, data: shops });
   } catch (error: any) {
     console.error("Admin shops GET error:", error);
