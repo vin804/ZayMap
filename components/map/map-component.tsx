@@ -45,6 +45,7 @@ interface RouteData {
 }
 
 interface MapComponentProps {
+  onCenterChange?: (center: {lat: number; lng: number}) => void;
   userLat: number;
   userLon: number;
   userLocationLoading: boolean;
@@ -99,6 +100,7 @@ export function MapComponent({
   const labelsTileLayerRef = useRef<unknown>(null);
   const lastPannedLocationRef = useRef<{ lat: number; lon: number } | null>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  
 
   // Load Leaflet dynamically
   useEffect(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -60,6 +61,8 @@ const FRESHNESS_STYLES = {
 
 export default function ShopDashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const adminShopId = searchParams.get("shop");
   const { user, logout, initializing } = useAuth();
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -78,8 +81,18 @@ export default function ShopDashboardPage() {
     if (!shop) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/shops/${shop.shop_id}/delete`, { method: "DELETE" });
-      if (res.ok) router.push("/map");
+      const res = await fetch(`/api/shops/${shop.shop_id}/delete`, {
+        method: "DELETE",
+        headers: { "x-user-id": user?.uid || "" },
+      });
+      if (res.ok) {
+        // Force full page reload to clear all caches
+        if (adminShopId) {
+          window.location.href = "/admin";
+        } else {
+          window.location.href = "/map";
+        }
+      }
       else {
         const data = await res.json();
         setError(data.error || "Failed to delete shop");
@@ -93,13 +106,20 @@ export default function ShopDashboardPage() {
     }
   };
 
-  useEffect(() => { fetchShopData(); }, [user?.uid]);
+    useEffect(() => { fetchShopData(); }, [user?.uid, adminShopId]);
 
   const fetchShopData = async () => {
     if (!user?.uid) { setLoading(false); return; }
     try {
       setLoading(true);
-      const response = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
+      
+      // Admin viewing a specific shop via ?shop=SHOP_ID
+      let response;
+      if (adminShopId) {
+        response = await fetch(`/api/shops/${adminShopId}`);
+      } else {
+        response = await fetch(`/api/shops/my-shop?owner_id=${user.uid}`);
+      }
       if (response.status === 404) { setShop(null); setLoading(false); return; }
       if (!response.ok) throw new Error("Failed to fetch shop data");
       const data = await response.json();
@@ -319,9 +339,12 @@ export default function ShopDashboardPage() {
           <div className="max-w-7xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button onClick={() => router.push("/map")} className="btn-ghost w-9 h-9 flex items-center justify-center">
-                  <ArrowLeft className="h-5 w-5" />
-                </button>
+<button
+  onClick={() => router.push(adminShopId ? "/admin" : "/map")}
+  className="btn-ghost w-9 h-9 flex items-center justify-center"
+>
+  <ArrowLeft className="h-5 w-5" />
+</button>
                 <h1 className="text-lg font-bold text-[var(--fg)]">Shop Dashboard</h1>
               </div>
               <div className="flex items-center gap-1">

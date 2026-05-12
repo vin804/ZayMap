@@ -14,7 +14,12 @@ export function SignInForm() {
 
   useEffect(() => {
     if (user) {
-      window.location.href = "/map";
+      // Don't redirect if we're in a claim flow — let AuthPage handle it
+      const hasClaim = typeof window !== "undefined" && 
+        new URLSearchParams(window.location.search).get("claim");
+      if (!hasClaim) {
+        window.location.href = "/map";
+      }
     }
   }, [user]);
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getFirestore, collection, getDocs, query as firestoreQuery, where } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
 
-// Initialize Firebase within the route handler for server-side reliability
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -19,8 +18,7 @@ function getDb() {
   return getFirestore();
 }
 
-// Shop category definitions with icons
-const TEST_SHOP_ID_PREFIXES = ["hk-", "test-", "sample-shop-", "shop-"];
+const TEST_SHOP_ID_PREFIXES = ["test-", "sample-shop-"];
 const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
 
 function isSampleShop(shopData: any, shopId: string) {
@@ -39,7 +37,6 @@ export const SHOP_CATEGORIES = [
   { id: "other", name: "Other", icon: "🏪" },
 ];
 
-// Shop interface
 interface Shop {
   shop_id: string;
   name: string;
@@ -55,7 +52,6 @@ interface Shop {
   image_urls?: string[];
 }
 
-// Search request interface
 interface SearchRequest {
   query?: string;
   categories?: string[];
@@ -66,15 +62,30 @@ interface SearchRequest {
   };
 }
 
-// Haversine formula to calculate distance between two points
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Earth's radius in kilometers
-  const maxRadius = 1800; // Maximum radius: 1,800 km (Myanmar coverage)
+function parseLocation(data: any): { latitude: number; longitude: number } {
+  if (data.location && typeof data.location === "object" && data.location.latitude != null && !isNaN(data.location.latitude)) {
+    return { latitude: data.location.latitude, longitude: data.location.longitude };
+  }
+  if (data.latitude != null && data.longitude != null && !isNaN(data.latitude) && !isNaN(data.longitude)) {
+    return { latitude: data.latitude, longitude: data.longitude };
+  }
+  if (typeof data.location === "string") {
+    const match = data.location.match(/\[?([\d.]+)°?\s*([NS]),?\s*([\d.]+)°?\s*([EW])\]?/i);
+    if (match) {
+      let lat = parseFloat(match[1]);
+      let lng = parseFloat(match[3]);
+      if (match[2].toUpperCase() === "S") lat = -lat;
+      if (match[4].toUpperCase() === "W") lng = -lng;
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+  }
+  return { latitude: 0, longitude: 0 };
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -87,57 +98,35 @@ function calculateDistance(
   return R * c;
 }
 
-// Calculate composite score for ranking
 function calculateScore(shop: Shop): number {
-  // Score = (rating * 20) + response_speed_score
-  // Rating is 0-5, so rating * 20 = 0-100
-  // Response speed is 0-100
-  // Total possible score: 0-200
   return shop.rating * 20 + shop.response_speed_score;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
     const body: SearchRequest = await request.json();
     const { query, categories, radius_km, user_location } = body;
 
-    // Validation - query is optional but has max length
     if (query && query.length > 100) {
-      return NextResponse.json(
-        { error: "Invalid query length. Must be 100 characters or less." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid query length. Must be 100 characters or less." }, { status: 400 });
     }
 
-    // Default radius if not provided
     const effectiveRadius = radius_km || 20;
-    if (effectiveRadius < 5 || effectiveRadius > 100) {
-      return NextResponse.json(
-        { error: "Invalid radius_km. Must be between 5 and 100." },
-        { status: 400 }
-      );
-    }
-
     const db = getDb();
 
-    // Fetch all shops from Firestore
     const shopsRef = collection(db, "shops");
     let shopsQuery = firestoreQuery(shopsRef);
 
-    // Apply category filter if categories are provided
     if (categories && categories.length > 0) {
       shopsQuery = firestoreQuery(shopsRef, where("category", "in", categories));
     }
 
     const snapshot = await getDocs(shopsQuery);
     console.log(`[Search API] Fetched ${snapshot.size} shops from Firestore`);
-    
-    // Fetch all reviews to calculate ratings
+
     const reviewsRef = collection(db, "reviews");
     const reviewsSnap = await getDocs(reviewsRef);
-    
-    // Group reviews by shop_id and calculate ratings
+
     const shopRatings: Record<string, { totalRating: number; count: number }> = {};
     reviewsSnap.forEach((reviewDoc) => {
       const reviewData = reviewDoc.data();
@@ -149,34 +138,30 @@ export async function POST(request: NextRequest) {
         shopRatings[reviewData.shop_id].count++;
       }
     });
-    
+
     let shops: Shop[] = [];
 
     snapshot.forEach((doc) => {
       const data = doc.data();
       const shopId = doc.id;
+
       if (isSampleShop(data, shopId)) {
         console.log(`[Search API] Skipping sample/test shop: ${shopId}`);
         return;
       }
-      console.log(`[Search API] Processing shop: ${shopId}, name: ${data.name}, location:`, data.location);
-      
-      // Handle both GeoPoint location field and separate lat/lng fields
-      const latitude = data.location?.latitude ?? data.latitude ?? 0;
-      const longitude = data.location?.longitude ?? data.longitude ?? 0;
-      
-      if (latitude === 0 || longitude === 0) {
-        console.warn(`[Search API] Shop ${doc.id} has invalid coordinates: ${latitude}, ${longitude}`);
+
+      const { latitude, longitude } = parseLocation(data);
+
+      if (latitude === 0 && longitude === 0) {
+        console.warn(`[Search API] Shop ${shopId} has invalid coordinates, skipping`);
+        return;
       }
-      
-      // Calculate rating from reviews
+
       const shopRating = shopRatings[doc.id];
-      const calculatedRating = shopRating && shopRating.count > 0 
-        ? shopRating.totalRating / shopRating.count 
-        : 0;
+      const calculatedRating = shopRating && shopRating.count > 0 ? shopRating.totalRating / shopRating.count : 0;
       const rating = calculatedRating || data.rating || 0;
       const reviewCount = shopRating?.count || data.review_count || 0;
-      
+
       shops.push({
         shop_id: doc.id,
         name: data.name || "",
@@ -192,14 +177,12 @@ export async function POST(request: NextRequest) {
         image_urls: data.image_urls || [],
       });
     });
-    
+
     console.log(`[Search API] Processed ${shops.length} shops with valid coordinates`);
 
-    // Filter by distance if user_location is provided
+    // Calculate distance for sorting, but DO NOT filter by distance
     if (user_location && typeof user_location.latitude === "number" && typeof user_location.longitude === "number") {
-      console.log(`[Search API] Filtering by distance: user at (${user_location.latitude}, ${user_location.longitude}), radius: ${effectiveRadius}km`);
-      
-      const shopsWithDistance = shops.map((shop) => ({
+      shops = shops.map((shop) => ({
         ...shop,
         distance_km: calculateDistance(
           user_location.latitude,
@@ -208,19 +191,8 @@ export async function POST(request: NextRequest) {
           shop.longitude
         ),
       }));
-      
-      shops = shopsWithDistance.filter((shop) => {
-        const withinRadius = shop.distance_km <= effectiveRadius;
-        if (!withinRadius) {
-          console.log(`[Search API] Shop ${shop.shop_id} excluded: ${shop.distance_km.toFixed(2)}km > ${effectiveRadius}km`);
-        }
-        return withinRadius;
-      });
-      
-      console.log(`[Search API] After distance filter: ${shops.length} shops within ${effectiveRadius}km`);
     }
 
-    // Filter by search query if provided
     if (query && query.trim()) {
       const searchTerm = query.toLowerCase().trim();
       shops = shops.filter((shop) => {
@@ -230,22 +202,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Sort by score (descending) then by distance (ascending)
     shops.sort((a, b) => {
       const scoreA = calculateScore(a);
       const scoreB = calculateScore(b);
-      
-      if (scoreB !== scoreA) {
-        return scoreB - scoreA; // Higher score first
-      }
-      
+      if (scoreB !== scoreA) return scoreB - scoreA;
       return (a as Shop & { distance_km: number }).distance_km - (b as Shop & { distance_km: number }).distance_km;
     });
 
-    // Limit results to 20
-    const limitedShops = shops.slice(0, 20);
+    const limitedShops = shops.slice(0, 50);
 
-    // Format response
     const response = {
       data: limitedShops.map((shop) => ({
         shop_id: shop.shop_id,
@@ -263,11 +228,7 @@ export async function POST(request: NextRequest) {
         image_urls: shop.image_urls,
       })),
       total_count: shops.length,
-      pagination: {
-        page: 1,
-        limit: 20,
-        has_more: shops.length > 20,
-      },
+      pagination: { page: 1, limit: 50, has_more: shops.length > 50 },
     };
 
     return NextResponse.json(response, { status: 200 });
@@ -281,9 +242,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get categories endpoint
 export async function GET() {
-  return NextResponse.json({
-    data: SHOP_CATEGORIES,
-  }, { status: 200 });
+  return NextResponse.json({ data: SHOP_CATEGORIES }, { status: 200 });
 }

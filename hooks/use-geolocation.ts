@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { YANGON_COORDINATES } from "@/lib/leaflet-config";
+import { MANDALAY_COORDINATES } from "@/lib/leaflet-config";
 
 // Round coordinates to 4 decimal places (~11m precision) to prevent GPS jitter re-renders
 function roundCoord(val: number): number {
@@ -19,8 +19,8 @@ export interface GeolocationState {
 
 export function useGeolocation() {
   const [state, setState] = useState<GeolocationState>({
-    latitude: (YANGON_COORDINATES as [number, number])[0],
-    longitude: (YANGON_COORDINATES as [number, number])[1],
+    latitude: (MANDALAY_COORDINATES as [number, number])[0],
+    longitude: (MANDALAY_COORDINATES as [number, number])[1],
     accuracy: 0,
     loading: true,
     error: null,
@@ -127,9 +127,9 @@ export function useGeolocation() {
 
   return {
     ...state,
-    isYangonDefault:
-      state.latitude === (YANGON_COORDINATES as [number, number])[0] &&
-      state.longitude === (YANGON_COORDINATES as [number, number])[1],
+    isDefaultLocation:
+      state.latitude === (MANDALAY_COORDINATES as [number, number])[0] &&
+      state.longitude === (MANDALAY_COORDINATES as [number, number])[1],
     retry,
     setLocation,
   };

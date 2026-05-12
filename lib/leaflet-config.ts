@@ -2,6 +2,9 @@ import { LatLngTuple, LatLngBoundsLiteral } from "leaflet";
 
 export const YANGON_COORDINATES: LatLngTuple = [16.8661, 96.1951];
 
+// Mandalay, Myanmar (default location)
+export const MANDALAY_COORDINATES: LatLngTuple = [21.9747, 96.0836];
+
 // Hpa Khant, Kachin State, Myanmar (where user's shop is located)
 export const HPA_KHANT_COORDINATES: LatLngTuple = [25.6044, 96.3070];
 

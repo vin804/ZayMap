@@ -21,7 +21,6 @@ function hasValidConfig(): boolean {
   );
 }
 
-// Server-side Firebase initialization (no window check)
 let app: FirebaseApp | null = null;
 let db: ReturnType<typeof getFirestore> | null = null;
 
@@ -32,11 +31,6 @@ if (hasValidConfig()) {
     app = getApps()[0];
   }
   db = getFirestore(app);
-} else {
-  console.error(
-    "Server Firebase not initialized: Missing environment variables. " +
-    "Please check your .env.local file and add Firebase credentials."
-  );
 }
 
 export { app, db };
