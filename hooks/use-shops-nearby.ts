@@ -97,36 +97,36 @@ export function useShopsNearby({ userLat, userLon, radiusKm }: UseShopsNearbyOpt
       const apiShops = result.data || [];
       console.log(`[useShopsNearby] Fetched ${apiShops.length} shops from Search API`);
 
-      // Convert API response to Shop format
-      const shopsData: Shop[] = apiShops.map((shop: {
-        shop_id: string;
-        name: string;
-        category: string;
-        latitude: number;
-        longitude: number;
-        distance_km?: number;
-        rating?: number;
-        logo_url?: string;
-        image_urls?: string[];
-        address?: string;
-        phone?: string;
-      }) => ({
-        shopId: shop.shop_id,
-        name: shop.name,
-        category: shop.category,
-        latitude: shop.latitude,
-        longitude: shop.longitude,
-        distance: shop.distance_km,
-        rating: shop.rating,
-        logoUrl: shop.logo_url,
-        bannerUrl: shop.image_urls?.[0] || "",
-        address: shop.address || "",
-        phone: shop.phone,
-      }));
+      // Convert API response to Shop format + client-side radius filter (safety net)
+      const shopsData: Shop[] = apiShops
+        .map((shop: {
+          shop_id: string;
+          name: string;
+          category: string;
+          latitude: number;
+          longitude: number;
+          distance_km?: number;
+          rating?: number;
+          logo_url?: string;
+          image_urls?: string[];
+          address?: string;
+          phone?: string;
+        }) => ({
+          shopId: shop.shop_id,
+          name: shop.name,
+          category: shop.category,
+          latitude: shop.latitude,
+          longitude: shop.longitude,
+          distance: shop.distance_km ?? calculateDistance(currentLat, currentLon, shop.latitude, shop.longitude),
+          rating: shop.rating,
+          logoUrl: shop.logo_url,
+          bannerUrl: shop.image_urls?.[0] || "",
+          address: shop.address || "",
+          phone: shop.phone,
+        }))
+        .filter((shop: Shop) => (shop.distance ?? Infinity) <= currentRadius);
 
-      // Show all shops returned by the API. The map should display whatever is available,
-      // even if an extra radius filter on the client would reduce results further.
-      console.log(`[useShopsNearby] Found ${shopsData.length} shops from API`);
+      console.log(`[useShopsNearby] Found ${shopsData.length} shops within ${currentRadius}km (from ${apiShops.length} API results)`);
       setShops(shopsData);
       lastFetchLocation.current = { lat: currentLat, lon: currentLon };
     } catch (err) {

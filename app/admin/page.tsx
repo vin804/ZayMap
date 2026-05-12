@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { LocationPicker } from "@/components/admin/location-picker";
@@ -68,6 +69,7 @@ interface Shop {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -138,7 +140,7 @@ export default function AdminPage() {
       let logo_url = "";
       const image_urls: string[] = [];
 
-      if (logoFile) {
+        if (logoFile) {
         const result = await uploadImages([logoFile], "shop-logos");
         if (result.error) throw new Error(result.error);
         logo_url = result.urls[0] || "";
@@ -238,6 +240,13 @@ export default function AdminPage() {
               <p className="text-xs text-[var(--text-gray)]">Shop Creation & Claim System</p>
             </div>
           </div>
+<button
+  onClick={() => router.push("/admin/map")}
+  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+>
+  <MapPin className="h-4 w-4" />
+  View Map
+</button>
           <button
             onClick={() => setShowForm(!showForm)}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white rounded-xl text-sm font-medium hover:shadow-lg hover:shadow-purple-500/20 transition-all"
@@ -245,6 +254,7 @@ export default function AdminPage() {
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {showForm ? "Close Form" : "Create Shop"}
           </button>
+          
         </div>
       </header>
 
