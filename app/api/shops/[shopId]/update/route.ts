@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 interface UpdateShopRequest {
   name: string;
@@ -72,10 +58,9 @@ export async function PUT(
       );
     }
 
-    const db = getDb();
-
+    
     // Update shop document
-    const shopRef = doc(db, "shops", shopId);
+    const shopRef = adminDb.collection("shops").doc(shopId);
     const updateData: Record<string, unknown> = {
       name: body.name.trim(),
       name_mm: body.name_mm?.trim() || "",
@@ -87,7 +72,7 @@ export async function PUT(
       delivery_available: body.delivery_available,
       description: body.description?.trim() || "",
       description_mm: body.description_mm?.trim() || "",
-      updated_at: serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp(),
     };
     
     // Only update logo_url if provided

@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { getDocs, collection, query, limit, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  limit,
+  deleteDoc,
+  doc,
+  setDoc,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 
@@ -77,7 +85,6 @@ export default function SeedPage() {
     setLoading(false);
   };
 
-  // Product images by category
   const PRODUCT_IMAGES: Record<string, string[]> = {
     electronics: [
       "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400",
@@ -135,17 +142,14 @@ export default function SeedPage() {
       const shopId = `hk-${Date.now()}-${i}`;
       const reviewCount = 8 + Math.floor(Math.random() * 15);
       
-      // Shop logo
       const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(template.name.replace(/\s+/g, '+'))}&background=667eea&color=fff&size=200`;
       
-      // Shop images (logo + 2 more)
       const shopImages = [
         logoUrl,
         `https://source.unsplash.com/400x300/?${template.category},shop`,
         `https://source.unsplash.com/400x300/?${template.category},store`,
       ];
       
-      // Create shop
       await setDoc(doc(db, "shops", shopId), {
         shop_id: shopId,
         name: template.name,
@@ -171,7 +175,6 @@ export default function SeedPage() {
         updated_at: new Date().toISOString(),
       });
       
-      // Create reviews
       for (let r = 0; r < reviewCount; r++) {
         const reviewId = `review-${shopId}-${r}`;
         const rating = Math.max(3, Math.min(5, Math.round(template.rating + (Math.random() - 0.5))));
@@ -185,7 +188,6 @@ export default function SeedPage() {
         });
       }
       
-      // Create products
       const productNames: Record<string, string[]> = {
         electronics: ["Smartphone", "Power Bank", "Headphones", "Phone Case", "Charger"],
         jewelry: ["Jade Bracelet", "Jade Ring", "Jade Pendant", "Gemstone Necklace", "Raw Jade"],
@@ -196,8 +198,7 @@ export default function SeedPage() {
       };
       
       const products = productNames[template.category] || productNames.general;
-      const images = PRODUCT_IMAGES[template.category] || PRODUCT_IMAGES.general;
-      
+      const images = PRODUCT_IMAGES[template.category] || PRODUCT_IMAGES.general      
       for (let p = 0; p < products.length; p++) {
         const productId = `product-${shopId}-${p}`;
         const price = 10000 + Math.floor(Math.random() * 90000);

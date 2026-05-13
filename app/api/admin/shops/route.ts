@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, addDoc, serverTimestamp, GeoPoint, getDocs, doc, getDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { FieldValue, GeoPoint, Timestamp } from "firebase-admin/firestore";
 import { ADMIN_UID } from "@/lib/admin-config";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 function assertAdmin(request: NextRequest) {
   const uid = request.headers.get("x-user-id");
@@ -29,8 +15,7 @@ function assertAdmin(request: NextRequest) {
 // GET /api/admin/shops — list all shops with owner names
 export async function GET() {
   try {
-    const db = getDb();
-    const snapshot = await getDocs(collection(db, "shops"));
+        const snapshot = await adminDb.collection("shops").get();
     const shops: any[] = [];
     const TEST_SHOP_ID_PREFIXES = ["test-", "sample-shop-"];
     const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
@@ -98,7 +83,7 @@ export async function GET() {
     await Promise.all(
       ownerIds.map(async (uid) => {
         try {
-          const userSnap = await getDoc(doc(db, "users", uid));
+          const userSnap = await adminDb.collection("users").doc(uid).get();
           if (userSnap.exists()) {
             const u = userSnap.data();
             ownerMap.set(uid, u.displayName || u.name || u.email || "Unknown");
@@ -158,8 +143,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Location is required" }, { status: 400 });
     }
 
-    const db = getDb();
-    const shopData = {
+        const shopData = {
       name: body.name.trim(),
       name_mm: body.name_mm?.trim() || "",
       category: body.category,
@@ -181,11 +165,11 @@ export async function POST(request: NextRequest) {
       owner_id: "PENDING",
       created_by: ADMIN_UID,
       status: "active",
-      created_at: serverTimestamp(),
-      updated_at: serverTimestamp(),
+      created_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, "shops"), shopData);
+    const docRef = await adminDb.collection("shops").add(shopData);
 
     return NextResponse.json({
       data: {

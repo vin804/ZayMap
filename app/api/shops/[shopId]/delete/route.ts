@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, deleteDoc, getDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+
+
 
 const ADMIN_UID = "3sPa1kDv6JcC2nEHeuJQOeL7Xl53";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+
+
 
 export async function DELETE(
   request: NextRequest,
@@ -38,8 +27,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const db = getDb();
-    const shopRef = doc(db, "shops", shopId);
+    
+    const shopRef = adminDb.collection("shops").doc(shopId);
     
     console.log(`[Delete Shop] Fetching shop doc...`);
     const shopSnap = await getDoc(shopRef);

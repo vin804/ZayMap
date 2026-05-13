@@ -1,23 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 // PUT - Reorder categories
 export async function PUT(
@@ -35,8 +20,7 @@ export async function PUT(
       );
     }
 
-    const db = getDb();
-    const shopRef = doc(db, "shops", shopId);
+        const shopRef = adminDb.collection("shops").doc(shopId);
     const shopSnap = await getDoc(shopRef);
 
     if (!shopSnap.exists()) {

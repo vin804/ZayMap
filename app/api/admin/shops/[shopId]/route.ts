@@ -1,29 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 // GET /api/admin/shops/[shopId]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ shopId: string }> }) {
   try {
     const { shopId } = await params;
-    const db = getDb();
-    const shopSnap = await getDoc(doc(db, "shops", shopId));
+        const shopSnap = await adminDb.collection("shops").doc(shopId).get();
 
     if (!shopSnap.exists()) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });

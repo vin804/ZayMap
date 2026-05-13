@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getDocs, collection, query, limit } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-server";
 import { db } from "@/lib/firebase";
 
 // Haversine formula to calculate distance between two points
@@ -37,7 +37,7 @@ export async function GET() {
     }
 
     // Fetch all shops
-    const shopsRef = collection(db, "shops");
+    const shopsRef = adminDb.collection("shops");
     const q = query(shopsRef, limit(100));
     const snapshot = await getDocs(q);
 

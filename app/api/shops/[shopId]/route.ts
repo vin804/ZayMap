@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, getDoc, collection, query as firestoreQuery, where, getDocs } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { Timestamp } from "firebase-admin/firestore";
+
+
 
 const TEST_SHOP_ID_PREFIXES = ["hk-", "test-", "sample-shop-", "shop-"];
 const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
@@ -13,21 +15,9 @@ function isSampleShop(shopData: any, shopId: string) {
 }
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+
+
 
 interface Category {
   id: string;
@@ -108,10 +98,10 @@ export async function GET(
   try {
     const { shopId } = await params;
 
-    const db = getDb();
+    
 
     // Fetch shop details
-    const shopRef = doc(db, "shops", shopId);
+    const shopRef = adminDb.collection("shops").doc(shopId);
     const shopSnap = await getDoc(shopRef);
 
     if (!shopSnap.exists()) {
@@ -130,7 +120,7 @@ export async function GET(
     }
     
     // Fetch ALL shop reviews and calculate rating (any review_type)
-    const reviewsRef = collection(db, "reviews");
+    const reviewsRef = adminDb.collection("reviews");
     const shopReviewsQuery = firestoreQuery(
       reviewsRef,
       where("shop_id", "==", shopId)

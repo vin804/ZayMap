@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
-
-// Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+import { adminDb } from "@/lib/firebase-server";
 
 interface Booking {
   id: string;
@@ -32,7 +14,6 @@ interface Booking {
   created_at: string;
 }
 
-// GET /api/shops/[shopId]/bookings - Get all bookings for products in this shop
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ shopId: string }> }
@@ -47,12 +28,7 @@ export async function GET(
       );
     }
 
-    const db = getDb();
-
-    // Get all bookings
-    const bookingsRef = collection(db, "bookings");
-    const bookingsQuery = query(bookingsRef, where("shop_id", "==", shopId));
-    const snapshot = await getDocs(bookingsQuery);
+    const snapshot = await adminDb.collection("bookings").where("shop_id", "==", shopId).get();
 
     const bookings: Booking[] = [];
     snapshot.forEach((doc) => {
@@ -71,7 +47,6 @@ export async function GET(
       });
     });
 
-    // Sort by created_at desc (newest first) - client side
     bookings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return NextResponse.json({ data: bookings }, { status: 200 });

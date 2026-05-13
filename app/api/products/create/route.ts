@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 interface CreateProductRequest {
   shop_id: string;
@@ -34,8 +20,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: CreateProductRequest = await request.json();
 
-    const db = getDb();
-
+    
     // Validation
     if (!body.shop_id || body.shop_id.trim() === "") {
       return NextResponse.json(
@@ -75,8 +60,8 @@ export async function POST(request: NextRequest) {
       image_urls: body.image_urls || [],
       freshness_status: freshnessStatus,
       upload_timestamp: uploadTimestamp, // Use upload_timestamp consistently
-      created_at: serverTimestamp(),
-      updated_at: serverTimestamp(),
+      created_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp(),
     };
     
     // Only add category_id if provided
@@ -84,7 +69,7 @@ export async function POST(request: NextRequest) {
       productData.category_id = body.category_id;
     }
 
-    const productsRef = collection(db, "products");
+    const productsRef = adminDb.collection("products");
     const docRef = await addDoc(productsRef, productData);
 
     return NextResponse.json(

@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, updateDoc, getDoc, increment } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { FieldValue } from "firebase-admin/firestore";
+
+
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+
+
 
 // POST /api/reviews/[reviewId]/vote - Vote helpful or unhelpful
 export async function POST(
@@ -36,8 +26,8 @@ export async function POST(
       );
     }
 
-    const db = getDb();
-    const reviewRef = doc(db, "reviews", reviewId);
+    
+    const reviewRef = adminDb.collection("reviews").doc(reviewId);
     
     // Check if review exists
     const reviewSnap = await getDoc(reviewRef);
@@ -50,8 +40,8 @@ export async function POST(
 
     // Update vote count
     const updateData = vote === 'helpful' 
-      ? { helpful_count: increment(1) }
-      : { unhelpful_count: increment(1) };
+      ? { helpful_count: FieldValue.increment(1) }
+      : { unhelpful_count: FieldValue.increment(1) };
 
     await updateDoc(reviewRef, updateData);
 
@@ -87,8 +77,8 @@ export async function DELETE(
       );
     }
 
-    const db = getDb();
-    const reviewRef = doc(db, "reviews", reviewId);
+    
+    const reviewRef = adminDb.collection("reviews").doc(reviewId);
     
     // Check if review exists
     const reviewSnap = await getDoc(reviewRef);
@@ -107,8 +97,8 @@ export async function DELETE(
     
     if (currentCount > 0) {
       const updateData = vote === 'helpful' 
-        ? { helpful_count: increment(-1) }
-        : { unhelpful_count: increment(-1) };
+        ? { helpful_count: FieldValue.increment(-1) }
+        : { unhelpful_count: FieldValue.increment(-1) };
 
       await updateDoc(reviewRef, updateData);
     }

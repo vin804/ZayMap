@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, getDocs, query, orderBy, limit as limitDocs, addDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+
+
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+
+
 
 interface Review {
   review_id: string;
@@ -43,10 +32,10 @@ export async function GET(
     const limitCount = parseInt(searchParams.get("limit") || "5", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const db = getDb();
+    
 
     // Fetch reviews for this shop
-    const reviewsRef = collection(db, "reviews");
+    const reviewsRef = adminDb.collection("reviews");
     const reviewsQuery = query(
       reviewsRef,
       orderBy("created_at", "desc"),
@@ -155,7 +144,7 @@ export async function POST(
       );
     }
 
-    const db = getDb();
+    
     
     // Create review document
     const reviewData = {
@@ -167,7 +156,7 @@ export async function POST(
       created_at: new Date().toISOString(),
     };
     
-    const reviewsRef = collection(db, "reviews");
+    const reviewsRef = adminDb.collection("reviews");
     const docRef = await addDoc(reviewsRef, reviewData);
     
     return NextResponse.json({

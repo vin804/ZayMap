@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, getDocs, query as firestoreQuery, where, doc, getDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { GeoPoint, Timestamp } from "firebase-admin/firestore";
+
+
 
 // Initialize Firebase within the route handler for server-side reliability
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+
+
 
 // Test shop/product ID prefixes to filter out sample data
 const TEST_ID_PREFIXES = ["hk-", "test-", "sample-", "gemstone-hk-"];
@@ -126,10 +116,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDb();
+    
 
     // Fetch all products from Firestore
-    const productsRef = collection(db, "products");
+    const productsRef = adminDb.collection("products");
     const snapshot = await getDocs(productsRef);
     
     let products: (Product & { distance_km: number })[] = [];
@@ -148,7 +138,7 @@ export async function POST(request: NextRequest) {
       // Get shop location (with caching)
       let shopData = shopCache.get(shopId);
       if (!shopData) {
-        const shopRef = doc(db, "shops", shopId);
+        const shopRef = adminDb.collection("shops").doc(shopId);
         const shopSnap = await getDoc(shopRef);
         if (shopSnap.exists()) {
           const shop = shopSnap.data();
@@ -185,7 +175,7 @@ export async function POST(request: NextRequest) {
         // Fetch product reviews to calculate product rating
         let productRating = 0;
         try {
-          const reviewsRef = collection(db, "reviews");
+          const reviewsRef = adminDb.collection("reviews");
           const reviewsQuery = firestoreQuery(
             reviewsRef,
             where("product_id", "==", productDoc.id)

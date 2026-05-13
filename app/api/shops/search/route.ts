@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, getDocs, query as firestoreQuery, where } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
+
+
+
+
 
 const TEST_SHOP_ID_PREFIXES = ["test-", "sample-shop-"];
 const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
@@ -112,9 +101,9 @@ export async function POST(request: NextRequest) {
     }
 
     const effectiveRadius = radius_km || 20;
-    const db = getDb();
+    
 
-    const shopsRef = collection(db, "shops");
+    const shopsRef = adminDb.collection("shops");
     let shopsQuery = firestoreQuery(shopsRef);
 
     if (categories && categories.length > 0) {
@@ -124,7 +113,7 @@ export async function POST(request: NextRequest) {
     const snapshot = await getDocs(shopsQuery);
     console.log(`[Search API] Fetched ${snapshot.size} shops from Firestore`);
 
-    const reviewsRef = collection(db, "reviews");
+    const reviewsRef = adminDb.collection("reviews");
     const reviewsSnap = await getDocs(reviewsRef);
 
     const shopRatings: Record<string, { totalRating: number; count: number }> = {};

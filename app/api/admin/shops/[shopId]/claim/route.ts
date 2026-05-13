@@ -1,22 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, doc, getDoc, updateDoc, GeoPoint } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
+import { GeoPoint } from "firebase-admin/firestore";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 export async function POST(
   request: NextRequest,
@@ -35,8 +21,7 @@ export async function POST(
       return NextResponse.json({ error: "user_lat and user_lng are required" }, { status: 400 });
     }
 
-    const db = getDb();
-    const shopRef = doc(db, "shops", shopId);
+        const shopRef = adminDb.collection("shops").doc(shopId);
     const shopSnap = await getDoc(shopRef);
 
     if (!shopSnap.exists()) {

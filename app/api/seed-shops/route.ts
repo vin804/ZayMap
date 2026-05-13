@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getDocs, collection, query, doc, setDoc, deleteDoc, type Firestore } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-server";
 import { db } from "@/lib/firebase";
 
 // Hpa Khant coordinates
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "list";
 
-    const shopsRef = collection(db, "shops");
+    const shopsRef = adminDb.collection("shops");
     const snapshot = await getDocs(query(shopsRef));
 
     if (action === "list") {
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
         const location = LOCATIONS[i];
         const shopId = `hk-${Date.now()}-${i}`;
         
-        await setDoc(doc(db, "shops", shopId), {
+        await adminDb.collection("shops").doc(shopId).set({
           shop_id: shopId,
           name: template.name,
           name_mm: template.name,

@@ -5,11 +5,9 @@ export interface UploadResult {
   error?: string;
 }
 
-// Cloudinary configuration - uses unsigned uploads (free tier: 25GB storage)
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-// Helper to add timeout to any promise
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
   return Promise.race([
     promise,
@@ -32,44 +30,44 @@ export async function uploadImages(files: File[], folder: string = "products"): 
   }
 
   const urls: string[] = [];
+  const errors: string[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     try {
-      // Validate file
       if (!file.type.startsWith("image/")) {
-        return { urls: [], error: `File ${file.name} is not an image` };
+        errors.push(`${file.name} is not an image`);
+        continue;
       }
       if (file.size > 5 * 1024 * 1024) {
-        return { urls: [], error: `File ${file.name} exceeds 5MB limit` };
+        errors.push(`${file.name} exceeds 5MB limit`);
+        continue;
       }
 
       console.log(`[Upload] Starting Cloudinary upload for ${file.name}...`);
 
-      // Create FormData for Cloudinary upload
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       formData.append("folder", folder);
       
-      // Create a unique public_id
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8);
       const publicId = `${folder}/${timestamp}_${random}`;
       formData.append("public_id", publicId);
 
-      // Upload to Cloudinary with 30 second timeout
       const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
       
+      // INCREASED TIMEOUT: 60 seconds instead of 30
       const uploadTask = fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
       
-      const response = await withTimeout(uploadTask, 30000, `Upload timeout for ${file.name}`);
+      const response = await withTimeout(uploadTask, 60000, `Upload timeout for ${file.name}`);
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error?.message || `Upload failed: ${response.status}`);
       }
       
@@ -83,23 +81,22 @@ export async function uploadImages(files: File[], folder: string = "products"): 
       console.log(`[Upload] Cloudinary Success: ${file.name} -> ${data.secure_url.substring(0, 50)}...`);
     } catch (err) {
       console.error("[Upload] Error for file:", file.name, err);
-      
       let errorMessage = err instanceof Error ? err.message : `Failed to upload ${file.name}`;
       
       if (errorMessage.includes("timeout")) {
-        errorMessage = `Upload timed out. Check your internet connection.`;
-      } else if (errorMessage.includes("preset")) {
-        errorMessage = `Cloudinary upload preset not found. Check NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env.local`;
-      } else if (errorMessage.includes("cloud_name")) {
-        errorMessage = `Cloudinary cloud name not found. Check NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME in .env.local`;
+        errorMessage = `${file.name}: Upload timed out.`;
       }
       
-      return { 
-        urls: [], 
-        error: errorMessage 
-      };
+      errors.push(errorMessage);
+      // CONTINUE to next file instead of aborting everything
+      continue;
     }
   }
 
-  return { urls };
+  // Return whatever succeeded, plus any errors as a warning
+  if (urls.length === 0 && errors.length > 0) {
+    return { urls: [], error: errors.join("; ") };
+  }
+
+  return { urls, error: errors.length > 0 ? errors.join("; ") : undefined };
 }

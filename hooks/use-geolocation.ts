@@ -2,11 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MANDALAY_COORDINATES } from "@/lib/leaflet-config";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
-// Round coordinates to 4 decimal places (~11m precision) to prevent GPS jitter re-renders
-function roundCoord(val: number): number {
-  return Math.round(val * 10000) / 10000;
-}
+// Hardcoded users that should always show Mandalay center
+const MANDALAY_USERS = [
+  "MP0wr2BYdicxFCKqNzA2RKIyoAi2",
+  "3sPa1kDv6JcC2nEHeuJQOeL7Xl53",
+];
+
+const MANDALAY_CENTER = {
+  lat: 21.9747,
+  lng: 96.0836,
+};
 
 export interface GeolocationState {
   latitude: number;
@@ -18,6 +26,18 @@ export interface GeolocationState {
 }
 
 export function useGeolocation() {
+  const [authReady, setAuthReady] = useState(false);
+  const [isMandalayUser, setIsMandalayUser] = useState(false);
+
+  // Wait for Firebase Auth to initialize before doing anything
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth!, (user) => {
+      setIsMandalayUser(MANDALAY_USERS.includes(user?.uid || ""));
+      setAuthReady(true);
+    });
+    return unsub;
+  }, []);
+
   const [state, setState] = useState<GeolocationState>({
     latitude: (MANDALAY_COORDINATES as [number, number])[0],
     longitude: (MANDALAY_COORDINATES as [number, number])[1],
@@ -30,6 +50,21 @@ export function useGeolocation() {
   const watchIdRef = useRef<number | null>(null);
 
   const startWatching = useCallback(() => {
+    if (!authReady) return; // Don't do anything until we know who the user is
+
+    // Hardcoded Mandalay users: skip GPS entirely
+    if (isMandalayUser) {
+      setState({
+        latitude: MANDALAY_CENTER.lat,
+        longitude: MANDALAY_CENTER.lng,
+        accuracy: 0,
+        loading: false,
+        error: null,
+        permission: "granted",
+      });
+      return;
+    }
+
     if (typeof window === "undefined" || !navigator.geolocation) {
       setState((prev) => ({
         ...prev,
@@ -41,18 +76,15 @@ export function useGeolocation() {
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
-    // Clear any existing watch
     if (watchIdRef.current) {
       navigator.geolocation.clearWatch(watchIdRef.current);
     }
 
-    // Watch position for real-time updates
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const lat = roundCoord(position.coords.latitude);
         const lng = roundCoord(position.coords.longitude);
         setState((prev) => {
-          // Only update if coordinates actually changed (prevents re-renders from GPS jitter)
           if (prev.latitude === lat && prev.longitude === lng) return prev;
           return {
             latitude: lat,
@@ -91,17 +123,15 @@ export function useGeolocation() {
         }));
       },
       {
-        enableHighAccuracy: true, // Use GPS/WiFi for accurate location (not IP address)
+        enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 10000, // 10 seconds cache for fresher data
+        maximumAge: 10000,
       }
     );
-  }, []);
+  }, [authReady, isMandalayUser]);
 
   useEffect(() => {
     startWatching();
-
-    // Cleanup on unmount
     return () => {
       if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
@@ -113,7 +143,6 @@ export function useGeolocation() {
     startWatching();
   }, [startWatching]);
 
-  // Manually set location (for testing or when GPS is inaccurate)
   const setLocation = useCallback((lat: number, lng: number) => {
     setState((prev) => ({
       ...prev,
@@ -128,21 +157,26 @@ export function useGeolocation() {
   return {
     ...state,
     isDefaultLocation:
-      state.latitude === (MANDALAY_COORDINATES as [number, number])[0] &&
-      state.longitude === (MANDALAY_COORDINATES as [number, number])[1],
+      (state.latitude === (MANDALAY_COORDINATES as [number, number])[0] &&
+        state.longitude === (MANDALAY_COORDINATES as [number, number])[1]) ||
+      (state.latitude === MANDALAY_CENTER.lat &&
+        state.longitude === MANDALAY_CENTER.lng),
     retry,
     setLocation,
   };
 }
 
-// Haversine formula to calculate distance between two coordinates in kilometers
+function roundCoord(val: number): number {
+  return Math.round(val * 10000) / 10000;
+}
+
 export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =

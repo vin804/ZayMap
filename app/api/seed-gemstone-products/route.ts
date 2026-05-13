@@ -1,23 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, collection, doc, setDoc } from "firebase/firestore";
-import { initializeApp, getApps } from "firebase/app";
+import { adminDb } from "@/lib/firebase-server";
 
 // Initialize Firebase
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore();
-}
 
 // 30 Gemstone/Jewelry Products
 const GEMSTONE_PRODUCTS = [
@@ -55,8 +40,7 @@ const GEMSTONE_PRODUCTS = [
 
 export async function POST(request: NextRequest) {
   try {
-    const db = getDb();
-    const body = await request.json();
+        const body = await request.json();
     const { shopId } = body;
 
     if (!shopId) {
@@ -73,7 +57,7 @@ export async function POST(request: NextRequest) {
       const productId = `gemstone-${shopId}-${i}`;
       const bookingFee = Math.round(product.price * 0.1);
 
-      await setDoc(doc(db, "products", productId), {
+      await adminDb.collection("products").doc(productId).set({
         product_id: productId,
         shop_id: shopId,
         product_name: product.name,
