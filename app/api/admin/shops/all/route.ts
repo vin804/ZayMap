@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase-server";
-import { collection, getDocs } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-server";
+// Admin SDK uses native .collection().get()
 
 export async function GET() {
   try {
-    if (!db) {
+    if (!adminDb) {
       return NextResponse.json(
         { error: "Database not initialized" },
         { status: 500 }
       );
     }
 
-    const snapshot = await getDocs(collection(db, "shops"));
+    const snapshot = await adminDb.collection("shops").get();
 
     const rawShops = snapshot.docs.map((doc) => {
       const data = doc.data();

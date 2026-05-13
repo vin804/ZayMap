@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase-server";
-import { collection, getDocs, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-server";
+// Admin SDK uses native .collection().get()
 
 const TEST_SHOP_ID_PREFIXES = ["hk-", "test-", "sample-shop-", "shop-"];
 const TEST_OWNER_ID_PREFIXES = ["test-owner-", "sample-owner-"];
@@ -19,20 +19,20 @@ function isSampleProductId(id: string): boolean {
 
 export async function GET() {
   try {
-    const shopsSnap = await getDocs(collection(db, "shops"));
+    const shopsSnap = await adminDb.collection("shops").get();
     const realShopIds = new Set<string>();
-    shopsSnap.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+    shopsSnap.forEach((doc) => {
       if (!isSampleShop(doc.data(), doc.id)) realShopIds.add(doc.id);
     });
 
-    const productsSnap = await getDocs(collection(db, "products"));
+    const productsSnap = await adminDb.collection("products").get();
     let productCount = 0;
-    productsSnap.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+    productsSnap.forEach((doc) => {
       const data = doc.data();
       if (realShopIds.has(data.shop_id) && !isSampleProductId(doc.id)) productCount++;
     });
 
-    const usersSnap = await getDocs(collection(db, "users"));
+    const usersSnap = await adminDb.collection("users").get();
 
     return NextResponse.json({
       shops: realShopIds.size,
