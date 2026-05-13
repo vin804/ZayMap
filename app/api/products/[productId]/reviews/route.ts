@@ -66,7 +66,7 @@ export async function POST(
       updated_at: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await addDoc(reviewsRef, reviewData);
+    const docRef = await reviewsRef.add(reviewData);
 
     const review: Review = {
       id: docRef.id,

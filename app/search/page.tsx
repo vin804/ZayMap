@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, MapPin, History, ChevronLeft, Loader2, Heart, Store, Package, AlertCircle, Navigation } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import { ShopCard } from "@/components/search/shop-card";
 import { CategoryFilter } from "@/components/search/category-filter";
 import { useShopSearch, useRecentSearches, SearchFilters } from "@/hooks/use-shop-search";
@@ -66,6 +67,7 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
 
+  const { user } = useAuth();
   const { results, loading, error, totalCount, search, clearResults } = useShopSearch(
     userLocation?.lat ?? null,
     userLocation?.lon ?? null
@@ -82,6 +84,16 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (typeof navigator === "undefined") return;
+
+    // 🔒 Hardcoded Mandalay for your account only
+    const ADMIN_UID = "MP0wr2BYdicxFCKqNzA2RKIyoAi2";
+    if (user?.uid === ADMIN_UID) {
+      setUserLocation({ lat: 21.9813, lon: 96.0891 }); // Mandalay
+      setLocationError(null);
+      return;
+    }
+
+    // Normal GPS for everyone else
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
@@ -90,11 +102,11 @@ export default function SearchPage() {
       (err) => {
         console.error("Location error:", err);
         setLocationError("Unable to get your location. Please enable location services.");
-        setUserLocation({ lat: 16.8661, lon: 96.1951 });
+        setUserLocation({ lat: 21.9813, lon: 96.0891 }); // Mandalay fallback
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

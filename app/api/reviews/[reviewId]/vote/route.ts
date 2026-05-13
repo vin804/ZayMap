@@ -30,20 +30,21 @@ export async function POST(
     const reviewRef = adminDb.collection("reviews").doc(reviewId);
     
     // Check if review exists
-    const reviewSnap = await getDoc(reviewRef);
-    if (!reviewSnap.exists()) {
+    const reviewSnap = await reviewRef.get();
+    if (!reviewSnap.exists) {
       return NextResponse.json(
         { error: "Review not found" },
         { status: 404 }
       );
     }
 
+    const reviewData = reviewSnap.data() || {};
     // Update vote count
     const updateData = vote === 'helpful' 
       ? { helpful_count: FieldValue.increment(1) }
       : { unhelpful_count: FieldValue.increment(1) };
 
-    await updateDoc(reviewRef, updateData);
+    await reviewRef.update(updateData);
 
     return NextResponse.json({ 
       data: { 
@@ -81,16 +82,16 @@ export async function DELETE(
     const reviewRef = adminDb.collection("reviews").doc(reviewId);
     
     // Check if review exists
-    const reviewSnap = await getDoc(reviewRef);
-    if (!reviewSnap.exists()) {
+    const reviewSnap = await reviewRef.get();
+    if (!reviewSnap.exists) {
       return NextResponse.json(
         { error: "Review not found" },
         { status: 404 }
       );
     }
 
+    const reviewData = reviewSnap.data() || {};
     // Decrement vote count (but not below 0)
-    const reviewData = reviewSnap.data();
     const currentCount = vote === 'helpful' 
       ? (reviewData.helpful_count || 0)
       : (reviewData.unhelpful_count || 0);
@@ -100,7 +101,7 @@ export async function DELETE(
         ? { helpful_count: FieldValue.increment(-1) }
         : { unhelpful_count: FieldValue.increment(-1) };
 
-      await updateDoc(reviewRef, updateData);
+      await reviewRef.update(updateData);
     }
 
     return NextResponse.json({ 

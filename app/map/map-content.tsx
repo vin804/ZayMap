@@ -159,11 +159,17 @@ function MapPageContent() {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Initialize radius from URL params or default to 5
+  // Initialize radius from URL params, localStorage, or default to 5
   const [radius, setRadiusState] = useState(() => {
     const urlRadius = searchParams.get("radius");
-    return urlRadius ? parseInt(urlRadius, 10) : 5;
+    const savedRadius = typeof window !== "undefined" ? localStorage.getItem("zaymap_radius") : null;
+    return urlRadius ? parseInt(urlRadius, 10) : savedRadius ? parseInt(savedRadius, 10) : 5;
   });
+
+  // Persist radius to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("zaymap_radius", radius.toString());
+  }, [radius]);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -230,7 +236,12 @@ function MapPageContent() {
     const lng = searchParams.get("lng");
     const highlight = searchParams.get("highlight");
     const shop = searchParams.get("shop");
+    const urlRadius = searchParams.get("radius");
     
+    // Only override radius if URL explicitly sets it (e.g. shared link)
+    if (urlRadius) {
+      setRadiusState(parseInt(urlRadius, 10));
+    }
     if (lat && lng) {
       setInitialCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
     }

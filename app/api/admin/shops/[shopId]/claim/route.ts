@@ -22,18 +22,18 @@ export async function POST(
     }
 
         const shopRef = adminDb.collection("shops").doc(shopId);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
     const data = shopSnap.data();
-    if (data.owner_id !== "PENDING") {
+    if (data?.owner_id !== "PENDING") {
       return NextResponse.json({ error: "Shop already claimed" }, { status: 409 });
     }
 
-    await updateDoc(shopRef, {
+    await shopRef.update({
       owner_id: uid,
       location: new GeoPoint(user_lat, user_lng),
       latitude: user_lat,

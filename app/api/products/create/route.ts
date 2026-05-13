@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const productsRef = adminDb.collection("products");
-    const docRef = await addDoc(productsRef, productData);
+    const docRef = await productsRef.add(productData);
 
     return NextResponse.json(
       {

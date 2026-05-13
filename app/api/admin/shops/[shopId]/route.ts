@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { shopId } = await params;
         const shopSnap = await adminDb.collection("shops").doc(shopId).get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 

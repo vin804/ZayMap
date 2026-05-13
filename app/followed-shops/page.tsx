@@ -150,7 +150,7 @@ export default function FollowedShopsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {followedShops.map((shop) => (
+            {[...new Map(followedShops.map((s) => [s.shop_id, s])).values()].map((shop) => (
               <div
                 key={shop.shop_id}
                 className="bg-[var(--card-bg)] rounded-xl border border-gray-200/20 p-4 hover:shadow-md transition-shadow"

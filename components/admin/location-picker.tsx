@@ -106,6 +106,63 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
     };
   }, [leafletLoaded]);
 
+  // React to external location updates (e.g. GPS button in registration form)
+  useEffect(() => {
+    if (!leafletLoaded || !mapInstanceRef.current) return;
+    const L = (window as any).L || require("leaflet");
+    const map = mapInstanceRef.current;
+
+    if (!initialLocation) {
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+        markerRef.current = null;
+      }
+      return;
+    }
+
+    const icon = L.divIcon({
+      className: "custom-marker-icon",
+      html: `<div style="
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: 3px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <div style="
+          width: 8px;
+          height: 8px;
+          background: white;
+          border-radius: 50%;
+          transform: rotate(45deg);
+        "></div>
+      </div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    });
+
+    if (markerRef.current) {
+      markerRef.current.setLatLng([initialLocation.lat, initialLocation.lng]);
+    } else {
+      const marker = L.marker([initialLocation.lat, initialLocation.lng], {
+        draggable: true,
+        icon,
+      }).addTo(map);
+      markerRef.current = marker;
+      marker.on("dragend", () => {
+        const pos = marker.getLatLng();
+        onLocationChange({ lat: pos.lat, lng: pos.lng });
+      });
+    }
+    map.panTo([initialLocation.lat, initialLocation.lng]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLocation, leafletLoaded]);
+
   return (
     <div className="relative rounded-xl border border-[var(--border)] overflow-hidden">
       {!leafletLoaded && (

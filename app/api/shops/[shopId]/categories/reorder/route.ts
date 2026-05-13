@@ -21,13 +21,13 @@ export async function PUT(
     }
 
         const shopRef = adminDb.collection("shops").doc(shopId);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
-    const shopData = shopSnap.data();
+    const shopData = shopSnap.data() || {};
 
     // Verify ownership
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
@@ -46,7 +46,7 @@ export async function PUT(
         order_index: idx,
       }));
 
-    await updateDoc(shopRef, { categories: reorderedCategories });
+    await shopRef.update({ categories: reorderedCategories });
 
     return NextResponse.json({
       success: true,

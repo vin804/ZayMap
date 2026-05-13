@@ -47,9 +47,9 @@ export async function PUT(
     
     // Check if product exists
     const productRef = adminDb.collection("products").doc(productId);
-    const productSnap = await getDoc(productRef);
+    const productSnap = await productRef.get();
 
-    if (!productSnap.exists()) {
+    if (!productSnap.exists) {
       return NextResponse.json(
         { error: "Product not found" },
         { status: 404 }
@@ -66,7 +66,7 @@ export async function PUT(
       updated_at: FieldValue.serverTimestamp(),
     };
 
-    await updateDoc(productRef, updateData);
+    await productRef.update(updateData);
 
     return NextResponse.json(
       {

@@ -36,16 +36,28 @@ export async function GET(
 
     // Fetch reviews for this shop
     const reviewsRef = adminDb.collection("reviews");
-    const reviewsQuery = query(
-      reviewsRef,
-      orderBy("created_at", "desc"),
-      limitDocs(limitCount)
-    );
+    const reviewsQuery = reviewsRef
+      .where("shop_id", "==", shopId)
+      .orderBy("created_at", "desc")
+      .limit(limitCount);
     
-    const reviewsSnap = await getDocs(reviewsQuery);
+    let reviewsSnap;
+    try {
+      reviewsSnap = await reviewsQuery.get();
+    } catch (queryError: any) {
+      console.error("[Reviews GET] Firestore query failed:", queryError.message || queryError);
+      // If it's an index error, return a helpful message
+      if (queryError.message?.includes("index")) {
+        return NextResponse.json(
+          { error: "Database index required. Please create the composite index for reviews collection.", details: queryError.message },
+          { status: 500 }
+        );
+      }
+      throw queryError;
+    }
     const reviews: Review[] = [];
 
-    reviewsSnap.forEach((doc) => {
+    reviewsSnap.forEach((doc: any) => {
       const data = doc.data();
       if (data.shop_id === shopId) {
         const review: Review = {
@@ -157,7 +169,7 @@ export async function POST(
     };
     
     const reviewsRef = adminDb.collection("reviews");
-    const docRef = await addDoc(reviewsRef, reviewData);
+    const docRef = await reviewsRef.add(reviewData);
     
     return NextResponse.json({
       data: {

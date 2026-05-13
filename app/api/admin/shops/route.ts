@@ -84,8 +84,8 @@ export async function GET() {
       ownerIds.map(async (uid) => {
         try {
           const userSnap = await adminDb.collection("users").doc(uid).get();
-          if (userSnap.exists()) {
-            const u = userSnap.data();
+          if (userSnap.exists) {
+            const u = userSnap.data() || {};
             ownerMap.set(uid, u.displayName || u.name || u.email || "Unknown");
           }
         } catch {

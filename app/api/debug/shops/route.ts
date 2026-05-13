@@ -38,13 +38,12 @@ export async function GET() {
 
     // Fetch all shops
     const shopsRef = adminDb.collection("shops");
-    const q = query(shopsRef, limit(100));
-    const snapshot = await getDocs(q);
+    const snapshot = await shopsRef.limit(100).get();
 
     const shops: any[] = [];
     const rawData: any[] = [];
 
-    snapshot.forEach((doc) => {
+    snapshot.forEach((doc: any) => {
       const data = doc.data();
       
       // Get coordinates from both possible locations

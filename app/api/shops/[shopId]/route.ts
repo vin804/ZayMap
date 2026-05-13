@@ -102,16 +102,16 @@ export async function GET(
 
     // Fetch shop details
     const shopRef = adminDb.collection("shops").doc(shopId);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json(
         { error: "Shop not found" },
         { status: 404 }
       );
     }
 
-    const shopData = shopSnap.data();
+    const shopData = shopSnap.data() || {};
     if (isSampleShop(shopData, shopId)) {
       return NextResponse.json(
         { error: "Shop not found" },
@@ -121,15 +121,12 @@ export async function GET(
     
     // Fetch ALL shop reviews and calculate rating (any review_type)
     const reviewsRef = adminDb.collection("reviews");
-    const shopReviewsQuery = firestoreQuery(
-      reviewsRef,
-      where("shop_id", "==", shopId)
-    );
-    const reviewsSnap = await getDocs(shopReviewsQuery);
+    const shopReviewsQuery = reviewsRef.where("shop_id", "==", shopId);
+    const reviewsSnap = await shopReviewsQuery.get();
     
     let totalRating = 0;
     let reviewCount = 0;
-    reviewsSnap.forEach((reviewDoc) => {
+    reviewsSnap.forEach((reviewDoc: any) => {
       const reviewData = reviewDoc.data();
       if (reviewData.rating) {
         totalRating += reviewData.rating;

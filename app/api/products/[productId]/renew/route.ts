@@ -15,9 +15,9 @@ export async function POST(
 
     // Get the product document
     const productRef = adminDb.collection("products").doc(productId);
-    const productDoc = await getDoc(productRef);
+    const productDoc = await productRef.get();
 
-    if (!productDoc.exists()) {
+    if (!productDoc.exists) {
       return NextResponse.json(
         { error: "Product not found" },
         { status: 404 }
@@ -26,7 +26,7 @@ export async function POST(
 
     // Update the timestamps to now
     const now = new Date().toISOString();
-    await updateDoc(productRef, {
+    await productRef.update({
       upload_timestamp: now, // Update this so product detail page shows correct time
       updated_at: now,
       renewed_at: now, // Track when it was specifically renewed

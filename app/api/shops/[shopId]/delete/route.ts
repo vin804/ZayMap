@@ -31,14 +31,14 @@ export async function DELETE(
     const shopRef = adminDb.collection("shops").doc(shopId);
     
     console.log(`[Delete Shop] Fetching shop doc...`);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       console.log(`[Delete Shop] Shop not found: ${shopId}`);
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
-    const shopData = shopSnap.data();
+    const shopData = shopSnap.data() || {};
     console.log(`[Delete Shop] Shop owner_id: ${shopData.owner_id}`);
 
     const isOwner = shopData.owner_id === userId;
@@ -51,7 +51,7 @@ export async function DELETE(
     }
 
     console.log(`[Delete Shop] Deleting shop...`);
-    await deleteDoc(shopRef);
+    await shopRef.delete();
     console.log(`[Delete Shop] Shop deleted successfully`);
 
     return NextResponse.json({ success: true, message: "Shop deleted successfully" });

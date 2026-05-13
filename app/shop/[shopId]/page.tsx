@@ -262,7 +262,14 @@ export default function ShopDetailPage() {
       if (!res.ok) { const data = await res.json(); throw new Error(data.error || t.reviewError); }
       setReviewText(""); setReviewRating(5); setShowReviewModal(false);
       const reviewsRes = await fetch(`/api/shops/${shopId}/reviews?limit=5`);
-      if (reviewsRes.ok) { const reviewsData = await reviewsRes.json(); setReviews(reviewsData.data.reviews); }
+      if (reviewsRes.ok) {
+        const reviewsData = await reviewsRes.json();
+        setReviews(reviewsData.data.reviews);
+      } else {
+        const errData = await reviewsRes.json();
+        console.error("Failed to refresh reviews:", errData);
+        setReviewError(errData.error || "Review saved but failed to refresh list.");
+      }
     } catch (err) { setReviewError(err instanceof Error ? err.message : t.reviewError); }
     finally { setReviewLoading(false); }
   };
@@ -274,7 +281,7 @@ export default function ShopDetailPage() {
       const shopRes = await fetch(`/api/shops/${shopId}`);
       if (!shopRes.ok) { if (shopRes.status === 404) throw new Error("Shop not found"); throw new Error("Failed to fetch shop details"); }
       const data = await shopRes.json();
-      setShop(data.data); setIsFollowing(data.data.isFollowing || false);
+      setShop(data.data);
       const productsRes = await fetch(`/api/shops/${shopId}/products?sort=freshness&limit=50`);
       if (productsRes.ok) { const productsData = await productsRes.json(); setProducts(productsData.data.products); }
       const reviewsRes = await fetch(`/api/shops/${shopId}/reviews?limit=5`);

@@ -7,7 +7,6 @@
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-server";
-import { db } from "@/lib/firebase";
 
 // Hpa Khant coordinates
 const HPA_KHANT = { lat: 25.6044, lng: 96.3070 };
@@ -28,19 +27,19 @@ function isSampleOrTestShop(docSnap: any, data: any) {
   );
 }
 
-async function deleteShopAndSubcollections(firestore: Firestore, shopId: string) {
+async function deleteShopAndSubcollections(shopId: string) {
   try {
-    const productsSnapshot = await getDocs(collection(firestore, "shops", shopId, "products"));
+    const productsSnapshot = await adminDb.collection("shops").doc(shopId).collection("products").get();
     for (const productDoc of productsSnapshot.docs) {
-      await deleteDoc(doc(firestore, "shops", shopId, "products", productDoc.id));
+      await adminDb.collection("shops").doc(shopId).collection("products").doc(productDoc.id).delete();
     }
 
-    const reviewsSnapshot = await getDocs(collection(firestore, "shops", shopId, "reviews"));
+    const reviewsSnapshot = await adminDb.collection("shops").doc(shopId).collection("reviews").get();
     for (const reviewDoc of reviewsSnapshot.docs) {
-      await deleteDoc(doc(firestore, "shops", shopId, "reviews", reviewDoc.id));
+      await adminDb.collection("shops").doc(shopId).collection("reviews").doc(reviewDoc.id).delete();
     }
 
-    await deleteDoc(doc(firestore, "shops", shopId));
+    await adminDb.collection("shops").doc(shopId).delete();
   } catch (error) {
     console.error(`Failed to delete shop ${shopId}:`, error);
     throw error;
@@ -69,15 +68,12 @@ const SHOP_TEMPLATES = [
 
 export async function GET(request: Request) {
   try {
-    if (!db) {
-      return NextResponse.json({ error: "Firebase not initialized" }, { status: 500 });
-    }
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "list";
 
     const shopsRef = adminDb.collection("shops");
-    const snapshot = await getDocs(query(shopsRef));
+    const snapshot = await shopsRef.get();
 
     if (action === "list") {
       const shops: any[] = [];
@@ -105,7 +101,7 @@ export async function GET(request: Request) {
         const isDuplicate = data.name?.toLowerCase().includes("one star") && docSnap.id !== "3sPa1kDv6JcC2nEHeuJQOeL7Xl53";
 
         if (isTest || isDuplicate) {
-          await deleteShopAndSubcollections(db, docSnap.id);
+          await deleteShopAndSubcollections(docSnap.id);
           deleted++;
         }
       }

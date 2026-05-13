@@ -85,7 +85,7 @@ export async function PUT(
       updateData.image_urls = body.image_urls;
     }
 
-    await updateDoc(shopRef, updateData);
+    await shopRef.update(updateData);
 
     return NextResponse.json(
       {

@@ -104,20 +104,20 @@ export async function POST(request: NextRequest) {
     
 
     const shopsRef = adminDb.collection("shops");
-    let shopsQuery = firestoreQuery(shopsRef);
+    let shopsQuery: FirebaseFirestore.Query = shopsRef;
 
     if (categories && categories.length > 0) {
-      shopsQuery = firestoreQuery(shopsRef, where("category", "in", categories));
+      shopsQuery = shopsRef.where("category", "in", categories);
     }
 
-    const snapshot = await getDocs(shopsQuery);
+    const snapshot = await shopsQuery.get();
     console.log(`[Search API] Fetched ${snapshot.size} shops from Firestore`);
 
     const reviewsRef = adminDb.collection("reviews");
-    const reviewsSnap = await getDocs(reviewsRef);
+    const reviewsSnap = await reviewsRef.get();
 
     const shopRatings: Record<string, { totalRating: number; count: number }> = {};
-    reviewsSnap.forEach((reviewDoc) => {
+    reviewsSnap.forEach((reviewDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const reviewData = reviewDoc.data();
       if (reviewData.shop_id && reviewData.rating) {
         if (!shopRatings[reviewData.shop_id]) {
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     let shops: Shop[] = [];
 
-    snapshot.forEach((doc) => {
+    snapshot.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const data = doc.data();
       const shopId = doc.id;
 

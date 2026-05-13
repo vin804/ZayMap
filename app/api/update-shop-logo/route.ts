@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     // Update shop with better logo and description
     const shopRef = adminDb.collection("shops").doc(shopId);
-    await updateDoc(shopRef, {
+    await shopRef.update({
       logo_url: "https://images.unsplash.com/photo-1612817288484-6f916006741a?w=400&h=400&fit=crop",
       image_urls: [
         "https://images.unsplash.com/photo-1612817288484-6f916006741a?w=400",

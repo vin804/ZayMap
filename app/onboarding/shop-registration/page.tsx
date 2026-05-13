@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { LocationPicker } from "@/components/admin/location-picker";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
@@ -23,6 +24,7 @@ import {
   Video,
   ChevronRight,
   Check,
+  Navigation,
 } from "lucide-react";
 
 type Language = "en" | "my";
@@ -237,6 +239,7 @@ export default function ShopRegistrationPage() {
   const [createdShopLocation, setCreatedShopLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   const [formData, setFormData] = useState<ShopFormData>({
     name: "",
@@ -270,6 +273,11 @@ export default function ShopRegistrationPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
   };
+
+  const handleLocationChange = useCallback((loc: { lat: number; lng: number }) => {
+    setFormData((prev) => ({ ...prev, location: loc }));
+    setError(null);
+  }, []);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,6 +352,7 @@ export default function ShopRegistrationPage() {
         if (!formData.phone.trim()) return t.enterPhone;
         if (!formData.address.trim()) return t.enterAddress;
         if (!/^\+?[\d\s-]{8,}$/.test(formData.phone)) return t.invalidPhone;
+        if (!formData.location) return "Please select a shop location.";
         return null;
       default:
         return null;
@@ -370,19 +379,11 @@ export default function ShopRegistrationPage() {
     setError(null);
 
     try {
-      let location = formData.location;
+      const location = formData.location;
       if (!location) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
-          });
-          location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-        } catch {
-          location = { lat: 25.8, lng: 96.3 };
-        }
+        setError("Please select a shop location before submitting.");
+        setLoading(false);
+        return;
       }
 
       let logoUrl = "";
@@ -868,6 +869,74 @@ export default function ShopRegistrationPage() {
                       rows={2}
                     />
                   </div>
+                </motion.div>
+
+                {/* Location Picker */}
+                <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={2}>
+                  <label className="block text-sm font-semibold mb-3" style={labelStyle}>
+                    Shop Location <span className="text-red-500">*</span>
+                  </label>
+
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setDetectingLocation(true);
+                        setError(null);
+                        try {
+                          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                              enableHighAccuracy: true,
+                              timeout: 10000,
+                              maximumAge: 0,
+                            });
+                          });
+                          const loc = {
+                            lat: Math.round(position.coords.latitude * 10000) / 10000,
+                            lng: Math.round(position.coords.longitude * 10000) / 10000,
+                          };
+                          handleLocationChange(loc);
+                        } catch {
+                          setError("Could not detect your location. Please drop the pin manually on the map.");
+                        } finally {
+                          setDetectingLocation(false);
+                        }
+                      }}
+                      disabled={detectingLocation}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors hover:bg-[#667eea]/10 disabled:opacity-50"
+                      style={{ background: "var(--bg-hover)", borderColor: "var(--border)", color: "var(--fg)" }}
+                    >
+                      {detectingLocation ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Navigation className="h-4 w-4 text-[#667eea]" />
+                      )}
+                      {detectingLocation ? "Detecting..." : "Use My Current Location"}
+                    </button>
+
+                    {formData.location && (
+                      <button
+                        type="button"
+                        onClick={() => handleLocationChange(null as any)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        <X className="h-4 w-4" />
+                        Clear Pin
+                      </button>
+                    )}
+                  </div>
+
+                  {formData.location && (
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-[#667eea]/10 border border-[#667eea]/20 text-xs font-mono text-[#667eea]">
+                      Lat: {formData.location.lat}, Lng: {formData.location.lng}
+                    </div>
+                  )}
+
+                  <LocationPicker
+                    onLocationChange={handleLocationChange}
+                    initialLocation={formData.location || undefined}
+                  />
                 </motion.div>
               </motion.div>
             )}

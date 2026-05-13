@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-server";
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";   
 
 // Initialize Firebase within the route handler for server-side reliability
 
@@ -25,13 +25,13 @@ export async function POST(
     console.log("Creating category:", { shopId, name, name_mm, icon, userId });
 
         const shopRef = adminDb.collection("shops").doc(shopId);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
-    const shopData = shopSnap.data();
+    const shopData = shopSnap.data() || {};
 
     // Verify ownership (owner or creator/admin)
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
@@ -70,8 +70,8 @@ export async function POST(
     if (name?.trim()) newCategory.name = name.trim();
     if (name_mm?.trim()) newCategory.name_mm = name_mm.trim();
 
-    await updateDoc(shopRef, {
-      categories: arrayUnion(newCategory),
+    await shopRef.update({
+      categories: FieldValue.arrayUnion(newCategory),
     });
 
     return NextResponse.json({
@@ -104,13 +104,13 @@ export async function PUT(
     }
 
         const shopRef = adminDb.collection("shops").doc(shopId);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
-    const shopData = shopSnap.data();
+    const shopData = shopSnap.data() || {};
 
     // Verify ownership (owner or creator/admin)
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
@@ -158,7 +158,7 @@ export async function PUT(
 
     categories[categoryIndex] = updatedCategory;
 
-    await updateDoc(shopRef, { categories });
+    await shopRef.update({ categories });
 
     return NextResponse.json({
       success: true,
@@ -192,13 +192,13 @@ export async function DELETE(
     }
 
         const shopRef = adminDb.collection("shops").doc(shopId);
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
 
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
-    const shopData = shopSnap.data();
+    const shopData = shopSnap.data() || {};
 
     // Verify ownership (owner or creator/admin)
     const ownerId = shopData.owner_id || shopData.owner_uid || shopData.user_id;
@@ -216,7 +216,7 @@ export async function DELETE(
       order_index: idx,
     }));
 
-    await updateDoc(shopRef, { categories: reorderedCategories });
+    await shopRef.update({ categories: reorderedCategories });
 
     return NextResponse.json({
       success: true,

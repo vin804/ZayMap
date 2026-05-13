@@ -28,7 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function ShopCard({
   shop_id, name, name_mm, category, distance_km, rating, review_count, delivery_available, logo_url, image_urls,
 }: ShopCardProps) {
-  const displayName = name_mm || name;
+  const hasBothNames = name_mm && name_mm.trim() !== "" && name_mm !== name;
   const bannerUrl = image_urls?.[0];
 
   return (
@@ -43,7 +43,7 @@ export function ShopCard({
           {bannerUrl ? (
             <img
               src={bannerUrl}
-              alt={`${displayName} banner`}
+              alt={`${name} banner`}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
@@ -65,7 +65,7 @@ export function ShopCard({
           <div className="relative -mt-10 mb-3 flex items-end gap-3">
             {logo_url ? (
               <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl border-2 border-[var(--card-bg)] bg-white shadow-xl transition-transform duration-300 group-hover:scale-105">
-                <img src={logo_url} alt={displayName} className="h-full w-full object-cover"
+                <img src={logo_url} alt={name} className="h-full w-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               </div>
             ) : (
@@ -75,8 +75,13 @@ export function ShopCard({
             )}
             <div className="mb-2 min-w-0 flex-1">
               <h3 className="truncate text-lg font-bold text-[var(--text-dark)] transition-colors group-hover:text-[#667eea]">
-                {displayName}
+                {name}
               </h3>
+              {hasBothNames && (
+                <p className="truncate text-sm text-[var(--text-gray)] mt-0.5">
+                  {name_mm}
+                </p>
+              )}
             </div>
           </div>
 

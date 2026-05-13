@@ -10,7 +10,7 @@ import { GeoPoint, Timestamp } from "firebase-admin/firestore";
 
 
 // Test shop/product ID prefixes to filter out sample data
-const TEST_ID_PREFIXES = ["hk-", "test-", "sample-", "gemstone-hk-"];
+const TEST_ID_PREFIXES: string[] = [];
 
 function isSampleData(id: string): boolean {
   return TEST_ID_PREFIXES.some((prefix) => id.startsWith(prefix));
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch all products from Firestore
     const productsRef = adminDb.collection("products");
-    const snapshot = await getDocs(productsRef);
+    const snapshot = await productsRef.get();
     
     let products: (Product & { distance_km: number })[] = [];
 
@@ -139,9 +139,9 @@ export async function POST(request: NextRequest) {
       let shopData = shopCache.get(shopId);
       if (!shopData) {
         const shopRef = adminDb.collection("shops").doc(shopId);
-        const shopSnap = await getDoc(shopRef);
-        if (shopSnap.exists()) {
-          const shop = shopSnap.data();
+        const shopSnap = await shopRef.get();
+        if (shopSnap.exists) {
+          const shop = shopSnap.data() || {};
           // Handle both GeoPoint location field and separate lat/lng fields
           const latitude_val = shop.location?.latitude ?? shop.latitude ?? 0;
           const longitude_val = shop.location?.longitude ?? shop.longitude ?? 0;
@@ -176,14 +176,11 @@ export async function POST(request: NextRequest) {
         let productRating = 0;
         try {
           const reviewsRef = adminDb.collection("reviews");
-          const reviewsQuery = firestoreQuery(
-            reviewsRef,
-            where("product_id", "==", productDoc.id)
-          );
-          const reviewsSnapshot = await getDocs(reviewsQuery);
+          const reviewsQuery = reviewsRef.where("product_id", "==", productDoc.id);
+          const reviewsSnapshot = await reviewsQuery.get();
           let totalRating = 0;
           let reviewCount = 0;
-          reviewsSnapshot.forEach((reviewDoc) => {
+          reviewsSnapshot.forEach((reviewDoc: any) => {
             const reviewData = reviewDoc.data();
             if (reviewData.rating) {
               totalRating += reviewData.rating;
