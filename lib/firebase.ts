@@ -12,13 +12,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Check if all required config is present
 function hasValidConfig(): boolean {
   return (
     typeof firebaseConfig.apiKey === "string" &&
     firebaseConfig.apiKey.length > 0 &&
-    typeof firebaseConfig.authDomain === "string" &&
-    firebaseConfig.authDomain.length > 0 &&
     typeof firebaseConfig.projectId === "string" &&
     firebaseConfig.projectId.length > 0
   );
@@ -28,36 +25,24 @@ export const isFirebaseConfigured = hasValidConfig();
 
 let app: FirebaseApp | null = null;
 
-// Only initialize Firebase if config is valid
-if (hasValidConfig()) {
-  if (typeof window !== "undefined") {
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApps()[0];
-    }
-  } else {
+// Only initialize on the browser. Do NOT run client SDK on the server.
+if (typeof window !== "undefined" && hasValidConfig()) {
+  if (!getApps().length) {
     app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
   }
-} else {
-  console.warn(
-    "Firebase not initialized: Missing environment variables. " +
-    "Please check your .env.local file and add Firebase credentials."
-  );
 }
 
-export const auth = app && typeof window !== "undefined" ? getAuth(app) : null;
-export const db = app && typeof window !== "undefined" ? getFirestore(app) : null;
-export const storage = app && typeof window !== "undefined" ? getStorage(app) : null;
+export const auth = app ? getAuth(app) : null;
+export const db = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;
 export { app };
 
-export const googleProvider = app && typeof window !== "undefined" ? new GoogleAuthProvider() : null;
+export const googleProvider = app ? new GoogleAuthProvider() : null;
 
-// Configure Facebook provider - only request public_profile, not email
-// Email requires additional Facebook permissions that aren't needed for basic sign-in
-const fbProvider = app && typeof window !== "undefined" ? new FacebookAuthProvider() : null;
+const fbProvider = app ? new FacebookAuthProvider() : null;
 if (fbProvider) {
-  // Clear any default scopes first, then add only public_profile
   fbProvider.setCustomParameters({
     scope: "public_profile"
   });
