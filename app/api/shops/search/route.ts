@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Search API] Processed ${shops.length} shops with valid coordinates`);
 
-    // Calculate distance for sorting, but DO NOT filter by distance
+    // Calculate distance and filter by radius
     if (user_location && typeof user_location.latitude === "number" && typeof user_location.longitude === "number") {
       shops = shops.map((shop) => ({
         ...shop,
@@ -180,6 +180,9 @@ export async function POST(request: NextRequest) {
           shop.longitude
         ),
       }));
+      
+      // Filter by radius
+      shops = shops.filter((shop) => (shop as any).distance_km <= effectiveRadius);
     }
 
     if (query && query.trim()) {

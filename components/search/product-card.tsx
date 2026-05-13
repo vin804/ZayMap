@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { MapPin, Star, Package } from "lucide-react";
+import { MapPin, Star, Package, Share2 } from "lucide-react";
+import { useState } from "react";
 
 interface ProductCardProps {
   product_id: string;
@@ -28,6 +29,7 @@ const FRESHNESS_STYLES = {
 export function ProductCard({
   product_id, product_name, product_name_mm, image_url, price, currency, freshness_status, product_rating = 0, distance_km,
 }: ProductCardProps) {
+  const [shareCopied, setShareCopied] = useState(false);
   const displayProductName = product_name_mm || product_name;
   const freshness = FRESHNESS_STYLES[freshness_status] || FRESHNESS_STYLES.red;
   const hasProductRating = product_rating && product_rating > 0;
@@ -62,6 +64,25 @@ export function ProductCard({
                 {freshness.label}
               </span>
             </div>
+          )}
+          {/* Share button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigator.clipboard.writeText(`${window.location.origin}/product/${product_id}`);
+              setShareCopied(true);
+              setTimeout(() => setShareCopied(false), 2000);
+            }}
+            className="absolute top-3 right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all"
+            title="Copy link"
+          >
+            <Share2 className={`h-4 w-4 ${shareCopied ? "text-green-400" : "text-white"}`} />
+          </button>
+          {shareCopied && (
+            <span className="absolute top-12 right-3 z-10 text-[10px] font-semibold text-green-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
+              Copied!
+            </span>
           )}
         </div>
 

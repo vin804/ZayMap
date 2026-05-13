@@ -73,29 +73,29 @@ export function ShopCard({
                 {CATEGORY_ICONS[category] || "🏪"}
               </div>
             )}
-            <div className="mb-2 min-w-0 flex-1">
-              <h3 className="truncate text-lg font-bold text-[var(--text-dark)] transition-colors group-hover:text-[#667eea]">
-                {name}
-              </h3>
-              {hasBothNames && (
-                <p className="truncate text-sm text-[var(--text-gray)] mt-0.5">
-                  {name_mm}
-                </p>
-              )}
-            </div>
           </div>
 
-          {/* Badges */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--border-subtle)] px-3 py-1 text-xs font-medium text-[var(--text-gray)]">
-              <Store className="h-3 w-3" />
-              {CATEGORY_LABELS[category] || category}
-            </span>
-            {delivery_available && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-500">
-                <Truck className="h-3 w-3" /> Delivery
-              </span>
+          {/* Name + Category together */}
+          <div className="mb-3 min-w-0">
+            <h3 className="truncate text-lg font-bold text-[var(--text-dark)] transition-colors group-hover:text-[#667eea]">
+              {name}
+            </h3>
+            {hasBothNames && (
+              <p className="truncate text-sm text-[var(--text-gray)] mt-0.5">
+                {name_mm}
+              </p>
             )}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--border-subtle)] px-3 py-1 text-xs font-medium text-[var(--text-gray)]">
+                <Store className="h-3 w-3" />
+                {CATEGORY_LABELS[category] || category}
+              </span>
+              {delivery_available && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-500">
+                  <Truck className="h-3 w-3" /> Delivery
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Meta - pushed to bottom */}

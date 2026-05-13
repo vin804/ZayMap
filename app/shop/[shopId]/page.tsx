@@ -171,7 +171,8 @@ export default function ShopDetailPage() {
   const reviewerName = user?.displayName || user?.email?.split("@")[0] || "Anonymous";
   const [activeTab, setActiveTab] = useState<"about" | "specs" | "shipping">("about");
   const [sortBy, setSortBy] = useState<"featured" | "price_low" | "price_high" | "freshness">("featured");
-  const [isFollowing, setIsFollowing] = useState(false);
+   const [isFollowing, setIsFollowing] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [userVotes, setUserVotes] = useState<Record<string, "helpful" | "unhelpful">>({});
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -388,9 +389,16 @@ export default function ShopDetailPage() {
             <h1 className="text-lg font-semibold truncate max-w-[200px] sm:max-w-md" style={{ color: "var(--fg)" }}>{displayName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { navigator.clipboard.writeText(window.location.href); }}
-              className="btn-ghost w-9 h-9 flex items-center justify-center rounded-xl" title="Share shop">
-              <Share2 className="h-5 w-5" style={{ color: "var(--fg-muted)" }} />
+            <button onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                setShareCopied(true);
+                setTimeout(() => setShareCopied(false), 2000);
+              }}
+              className="btn-ghost w-9 h-9 flex items-center justify-center rounded-xl relative" title="Share shop">
+              <Share2 className="h-5 w-5" style={{ color: shareCopied ? "var(--accent)" : "var(--fg-muted)" }} />
+              {shareCopied && (
+                <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-green-500 whitespace-nowrap">Copied!</span>
+              )}
             </button>
             <button onClick={toggleLanguage}
               className="px-3 py-1.5 rounded-full text-sm font-medium"

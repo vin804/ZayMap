@@ -197,7 +197,8 @@ export function ShopSidebar({
               </div>
 
               <div className="relative px-3 pb-3">
-                <div className="relative -mt-5 mb-1.5 flex items-end gap-2.5">
+                {/* Logo overlapping banner */}
+                <div className="relative -mt-5 mb-2 flex items-end gap-2.5">
                   {shop.logoUrl ? (
                     <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border-2 border-[var(--card-bg)] bg-white shadow-md transition-transform duration-300 group-hover:scale-105">
                       <img
@@ -214,16 +215,22 @@ export function ShopSidebar({
                       {getCategoryEmoji(shop.category)}
                     </div>
                   )}
+                </div>
 
-                  <div className="mb-0.5 min-w-0 flex-1">
-                    <h3 className="truncate text-sm font-bold text-[var(--text-dark)] transition-colors group-hover:text-[#667eea]">
-                      {shop.name}
-                    </h3>
-                    <p className="text-[11px] text-[var(--text-gray)]">{shop.category}</p>
+                {/* Name + Category together */}
+                <div className="mb-1.5 min-w-0">
+                  <h3 className="truncate text-sm font-bold text-[var(--text-dark)] transition-colors group-hover:text-[#667eea]">
+                    {shop.name}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--border-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-gray)]">
+                      <Store className="h-3 w-3" />
+                      {shop.category}
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-0.5">
+                <div className="flex items-center justify-between pt-1">
                   <span className="flex items-center gap-1 text-[11px] font-semibold text-[#667eea]">
                     <Navigation className="h-3 w-3" />
                     {shop.distance?.toFixed(1) ?? "?"} km
