@@ -140,6 +140,7 @@ export default function ShopSettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
   const [bannerFiles, setBannerFiles] = useState<File[]>([]);
+  const [mapType, setMapType] = useState<"standard" | "satellite">("standard");
 
   const [formData, setFormData] = useState<ShopFormData>({
     name: "",
@@ -717,9 +718,20 @@ export default function ShopSettingsPage() {
 
             {/* Location Picker */}
             <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={8.5}>
-              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
-                Shop Location <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-semibold" style={labelStyle}>
+                  Shop Location <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setMapType((prev) => (prev === "standard" ? "satellite" : "standard"))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors hover:bg-[#667eea]/10"
+                  style={{ background: "var(--bg-hover)", borderColor: "var(--border)", color: "var(--fg)" }}
+                >
+                  <Globe className="h-3.5 w-3.5 text-[#667eea]" />
+                  {mapType === "standard" ? "Satellite View" : "Standard View"}
+                </button>
+              </div>
               <LocationPicker
                 initialLocation={{ lat: formData.latitude, lng: formData.longitude }}
                 onLocationChange={(loc) =>
@@ -729,6 +741,7 @@ export default function ShopSettingsPage() {
                     longitude: loc.lng,
                   }))
                 }
+                mapType={mapType}
               />
               <div className="flex gap-3 mt-2">
                 <div className="flex-1">

@@ -240,6 +240,7 @@ export default function ShopRegistrationPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreviews, setBannerPreviews] = useState<string[]>([]);
   const [detectingLocation, setDetectingLocation] = useState(false);
+  const [mapType, setMapType] = useState<"standard" | "satellite">("standard");
 
   const [formData, setFormData] = useState<ShopFormData>({
     name: "",
@@ -914,6 +915,16 @@ export default function ShopRegistrationPage() {
                       {detectingLocation ? "Detecting..." : "Use My Current Location"}
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => setMapType((prev) => (prev === "standard" ? "satellite" : "standard"))}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors hover:bg-[#667eea]/10"
+                      style={{ background: "var(--bg-hover)", borderColor: "var(--border)", color: "var(--fg)" }}
+                    >
+                      <Globe className="h-4 w-4 text-[#667eea]" />
+                      {mapType === "standard" ? "Satellite View" : "Standard View"}
+                    </button>
+
                     {formData.location && (
                       <button
                         type="button"
@@ -936,6 +947,7 @@ export default function ShopRegistrationPage() {
                   <LocationPicker
                     onLocationChange={handleLocationChange}
                     initialLocation={formData.location || undefined}
+                    mapType={mapType}
                   />
                 </motion.div>
               </motion.div>

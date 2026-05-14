@@ -7,12 +7,19 @@ import { MapPin, Loader2 } from "lucide-react";
 interface LocationPickerProps {
   onLocationChange: (location: { lat: number; lng: number }) => void;
   initialLocation?: { lat: number; lng: number };
+  mapType?: "standard" | "satellite";
 }
 
-export function LocationPicker({ onLocationChange, initialLocation }: LocationPickerProps) {
+const SATELLITE_TILE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_ATTRIBUTION =
+  "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community";
+
+export function LocationPicker({ onLocationChange, initialLocation, mapType = "standard" }: LocationPickerProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const tileLayerRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   useEffect(() => {
@@ -32,11 +39,12 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
     const map = L.map(mapRef.current).setView([startLat, startLng], 14);
     mapInstanceRef.current = map;
 
-    L.tileLayer(TILE_LAYER_URL, {
+    const baseLayer = L.tileLayer(TILE_LAYER_URL, {
       attribution: TILE_LAYER_ATTRIBUTION,
       maxZoom: 18,
       minZoom: 5,
     }).addTo(map);
+    tileLayerRef.current = baseLayer;
 
     // Custom div icon that doesn't rely on external PNG files
     const createIcon = () =>
@@ -102,9 +110,30 @@ export function LocationPicker({ onLocationChange, initialLocation }: LocationPi
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markerRef.current = null;
+        tileLayerRef.current = null;
       }
     };
   }, [leafletLoaded]);
+
+  // Swap tile layer when mapType changes
+  useEffect(() => {
+    if (!leafletLoaded || !mapInstanceRef.current) return;
+    const L = (window as any).L || require("leaflet");
+    const map = mapInstanceRef.current;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+
+    const newUrl = mapType === "satellite" ? SATELLITE_TILE_URL : TILE_LAYER_URL;
+    const newAttribution = mapType === "satellite" ? SATELLITE_ATTRIBUTION : TILE_LAYER_ATTRIBUTION;
+
+    tileLayerRef.current = L.tileLayer(newUrl, {
+      attribution: newAttribution,
+      maxZoom: 18,
+      minZoom: 5,
+    }).addTo(map);
+  }, [mapType, leafletLoaded]);
 
   // React to external location updates (e.g. GPS button in registration form)
   useEffect(() => {
