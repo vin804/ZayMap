@@ -808,11 +808,11 @@ function MapPageContent() {
 
           {/* Directions Panel - Outside main to appear above map */}
           {showDirectionsPanel && route && (
-            <div className={`absolute z-[9999] bg-[var(--card-bg)] border border-gray-200/20 shadow-xl transition-all duration-300 ${
+            <div className={`absolute z-[9999] bg-[var(--card-bg)] border border-[var(--border)] shadow-2xl backdrop-blur-xl transition-all duration-300 ${
               directionsMinimized
                 ? 'right-4 bottom-24 lg:right-4 lg:top-20 lg:bottom-auto w-auto rounded-full px-4 py-2'
                 : 'right-4 top-20 w-[calc(100%-2rem)] lg:w-80 max-h-[70vh] overflow-y-auto rounded-xl p-4'
-            }`}>
+            }`} style={{ background: "var(--card-bg)", opacity: 1 }}>
               <div className={`flex items-center justify-between ${!directionsMinimized && 'mb-4 pb-3 border-b border-gray-200/20'}`}>
                 {!directionsMinimized && <h3 className="font-semibold text-[var(--text-dark)]">Directions</h3>}
 
@@ -829,7 +829,7 @@ function MapPageContent() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setDirectionsMinimized(!directionsMinimized)}
-                    className="p-1 hover:bg-gray-500/10 rounded-full lg:hidden"
+                    className="p-1 hover:bg-gray-500/10 rounded-full"
                     title={directionsMinimized ? "Expand" : "Minimize"}
                   >
                     {directionsMinimized ? (
