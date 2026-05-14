@@ -18,6 +18,8 @@ interface UpdateShopRequest {
   description_mm?: string;
   logo_url?: string;
   image_urls?: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 // PUT /api/shops/[shopId]/update - Update shop details
@@ -83,6 +85,14 @@ export async function PUT(
     // Only update image_urls if provided
     if (body.image_urls !== undefined) {
       updateData.image_urls = body.image_urls;
+    }
+
+    // Update location fields
+    if (typeof body.latitude === "number") {
+      updateData.latitude = body.latitude;
+    }
+    if (typeof body.longitude === "number") {
+      updateData.longitude = body.longitude;
     }
 
     await shopRef.update(updateData);

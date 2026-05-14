@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { ProtectedRoute } from "@/components/protected-route";
 import { uploadImages } from "@/lib/upload";
+import { LocationPicker } from "@/components/admin/location-picker";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Store,
@@ -47,6 +48,8 @@ interface ShopFormData {
   description: string;
   description_mm: string;
   categories: Category[];
+  latitude: number;
+  longitude: number;
 }
 
 const CATEGORIES = [
@@ -152,6 +155,8 @@ export default function ShopSettingsPage() {
     description: "",
     description_mm: "",
     categories: [],
+    latitude: 21.9813,
+    longitude: 96.0891,
   });
 
   // Fetch shop
@@ -183,6 +188,8 @@ export default function ShopSettingsPage() {
             description: shop.description || "",
             description_mm: shop.description_mm || "",
             categories: shop.categories || [],
+            latitude: shop.latitude ?? shop.location?.latitude ?? 21.9813,
+            longitude: shop.longitude ?? shop.location?.longitude ?? 96.0891,
           });
           if (shop.logo_url) {
             setLogoPreview(shop.logo_url);
@@ -705,6 +712,47 @@ export default function ShopSettingsPage() {
                   style={inputStyle}
                   rows={2}
                 />
+              </div>
+            </motion.div>
+
+            {/* Location Picker */}
+            <motion.div variants={fieldVariants} initial="hidden" animate="visible" custom={8.5}>
+              <label className="block text-sm font-semibold mb-2" style={labelStyle}>
+                Shop Location <span className="text-red-500">*</span>
+              </label>
+              <LocationPicker
+                initialLocation={{ lat: formData.latitude, lng: formData.longitude }}
+                onLocationChange={(loc) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    latitude: loc.lat,
+                    longitude: loc.lng,
+                  }))
+                }
+              />
+              <div className="flex gap-3 mt-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium mb-1" style={helperStyle}>Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData.latitude}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, latitude: parseFloat(e.target.value) || 0 }))}
+                    className={inputBaseClasses}
+                    style={inputStyle}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium mb-1" style={helperStyle}>Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData.longitude}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, longitude: parseFloat(e.target.value) || 0 }))}
+                    className={inputBaseClasses}
+                    style={inputStyle}
+                  />
+                </div>
               </div>
             </motion.div>
 
