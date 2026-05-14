@@ -73,6 +73,7 @@ export default function ShopDashboardPage() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const [newCategory, setNewCategory] = useState({ name: "", name_mm: "", icon: "📦" });
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editCategoryData, setEditCategoryData] = useState({ name: "", name_mm: "", icon: "" });
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -115,6 +116,7 @@ export default function ShopDashboardPage() {
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
     if (!confirm(`Delete "${productName}"? This cannot be undone.`)) return;
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/products/${productId}`, {
         method: "DELETE",
@@ -124,10 +126,10 @@ export default function ShopDashboardPage() {
         setProducts((prev) => prev.filter((p) => p.product_id !== productId));
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to delete product");
+        setDeleteError(data.error || "Failed to delete product");
       }
     } catch {
-      setError("Failed to delete product");
+      setDeleteError("Failed to delete product");
     }
   };
 
@@ -542,6 +544,13 @@ export default function ShopDashboardPage() {
 
           {/* Products */}
           <div className="bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)] shadow-[0_4px_16px_rgba(15,17,26,0.05)] overflow-hidden">
+            {deleteError && (
+              <div className="mx-5 mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 flex items-center gap-2 text-sm text-red-500">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {deleteError}
+                <button onClick={() => setDeleteError(null)} className="ml-auto p-1 hover:bg-red-500/10 rounded"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
             <div className="p-5 border-b border-[var(--border)]">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>

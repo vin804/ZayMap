@@ -176,3 +176,34 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ productId: string }> }
+) {
+  try {
+    const { productId } = await params;
+
+    const productSnap = await adminDb.collection("products").doc(productId).get();
+
+    if (!productSnap.exists) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    await adminDb.collection("products").doc(productId).delete();
+
+    return NextResponse.json(
+      { message: "Product deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Product delete error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete product" },
+      { status: 500 }
+    );
+  }
+}
