@@ -110,6 +110,24 @@ export default function ShopDashboardPage() {
       setShowDeleteConfirm(false);
     } finally {
       setDeleting(false);
+     }
+  };
+
+  const handleDeleteProduct = async (productId: string, productName: string) => {
+    if (!confirm(`Delete "${productName}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        setProducts((prev) => prev.filter((p) => p.product_id !== productId));
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to delete product");
+      }
+    } catch {
+      setError("Failed to delete product");
     }
   };
 
@@ -569,6 +587,7 @@ export default function ShopDashboardPage() {
                       <div className="flex items-center gap-1">
                         <button onClick={(e) => { e.stopPropagation(); router.push(getEditUrl(product.product_id)); }} className="btn-ghost w-8 h-8" title="Edit"><Edit className="h-4 w-4" /></button>
                         <button onClick={(e) => { e.stopPropagation(); router.push(`/product/${product.product_id}`); }} className="btn-ghost w-8 h-8" title="View"><Eye className="h-4 w-4" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.product_id, product.product_name); }} className="btn-ghost w-8 h-8 text-red-500 hover:bg-red-500/10" title="Delete"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                   );
@@ -586,6 +605,7 @@ export default function ShopDashboardPage() {
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <button onClick={(e) => { e.stopPropagation(); router.push(getEditUrl(product.product_id)); }} className="p-2 bg-white rounded-full hover:bg-gray-100"><Edit className="h-4 w-4 text-gray-700" /></button>
                           <button onClick={(e) => { e.stopPropagation(); router.push(`/product/${product.product_id}`); }} className="p-2 bg-white rounded-full hover:bg-gray-100"><Eye className="h-4 w-4 text-gray-700" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.product_id, product.product_name); }} className="p-2 bg-red-500 rounded-full hover:bg-red-600"><Trash2 className="h-4 w-4 text-white" /></button>
                         </div>
                       </div>
                       <div className="p-3">
